@@ -650,7 +650,7 @@ void ScheduleEditor::showUpcomingByTitle(void)
     QString title = m_recordingRule->m_title;
 
     if (m_recordingRule->m_searchType != kNoSearch)
-        title.remove(QRegExp(" \\(.*\\)$"));
+        title.remove(RecordingInfo::kReSearchTypeName);
 
     ShowUpcoming(title, m_recordingRule->m_seriesid);
 }
@@ -1419,7 +1419,7 @@ void MetadataOptions::OnImageSearchListSelection(const ArtworkInfo& info,
     lookup->SetAutomatic(true);
     lookup->SetData(QVariant::fromValue<VideoArtworkType>(type));
 
-    ArtworkMap downloads;
+    DownloadMap downloads;
     downloads.insert(type, info);
     lookup->SetDownloads(downloads);
     lookup->SetAllowOverwrites(true);

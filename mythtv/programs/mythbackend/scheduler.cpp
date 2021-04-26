@@ -20,7 +20,6 @@
 #include <QStringList>
 #include <QDateTime>
 #include <QString>
-#include <QRegExp>
 #include <QMutex>
 #include <QFile>
 #include <QMap>
@@ -53,13 +52,13 @@
 
 bool debugConflicts = false;
 
-Scheduler::Scheduler(bool runthread, QMap<int, EncoderLink *> *tvList,
+Scheduler::Scheduler(bool runthread, QMap<int, EncoderLink *> *_tvList,
                      const QString& tmptable, Scheduler *master_sched) :
     MThread("Scheduler"),
     m_recordTable(tmptable),
     m_priorityTable("powerpriority"),
     m_specSched(master_sched),
-    m_tvList(tvList),
+    m_tvList(_tvList),
     m_doRun(runthread),
     m_openEnd(openEndNever)
 {
@@ -3828,7 +3827,7 @@ void Scheduler::BuildNewRecordsQueries(uint recordid, QStringList &from,
         switch (searchtype)
         {
         case kPowerSearch:
-            qphrase.remove(QRegExp("^\\s*AND\\s+", Qt::CaseInsensitive));
+            qphrase.remove(RecordingInfo::kReLeadingAnd);
             qphrase.remove(';');
             from << result.value(2).toString();
             where << (QString("%1.recordid = ").arg(m_recordTable) + bindrecid +
@@ -4413,7 +4412,7 @@ void Scheduler::AddNewRecords(void)
         if (result.value(0).toBool())
         {
             QString sclause = result.value(1).toString();
-            sclause.remove(QRegExp("^\\s*AND\\s+", Qt::CaseInsensitive));
+            sclause.remove(RecordingInfo::kReLeadingAnd);
             sclause.remove(';');
             pwrpri += QString(" + (%1) * %2").arg(sclause)
                                              .arg(result.value(0).toInt());

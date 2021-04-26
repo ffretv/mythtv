@@ -19,7 +19,7 @@
 #include <QEvent>
 #include <QFile>
 #include <QKeyEvent>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QUrl>
 #include <utility>
@@ -847,7 +847,8 @@ void Ripper::scanCD(void)
 
 void Ripper::deleteAllExistingTracks(void)
 {
-    for (auto *it = m_tracks->begin(); it < m_tracks->end(); ++it)
+    // NOLINTNEXTLINE(readability-qualified-auto) // qt6
+    for (auto it = m_tracks->begin(); it < m_tracks->end(); ++it)
     {
         RipTrack *track = (*it);
         if (track && !track->isNew)
@@ -887,17 +888,15 @@ bool Ripper::deleteExistingTrack(RipTrack *track)
             " ON music_songs.directory_id=music_directories.directory_id "
             "WHERE artist_name REGEXP \'");
     QString token = artist;
-    token.replace(QRegExp(R"((/|\\|:|'|\,|\!|\(|\)|"|\?|\|))"),
-                  QString("."));
-
+    static const QRegularExpression punctuation
+        { R"((/|\\|:|'|\,|\!|\(|\)|"|\?|\|))" };
+    token.replace(punctuation, QString("."));
     queryString += token + "\' AND " + "album_name REGEXP \'";
     token = album;
-    token.replace(QRegExp(R"((/|\\|:|'|\,|\!|\(|\)|"|\?|\|))"),
-                  QString("."));
+    token.replace(punctuation, QString("."));
     queryString += token + "\' AND " + "name    REGEXP \'";
     token = title;
-    token.replace(QRegExp(R"((/|\\|:|'|\,|\!|\(|\)|"|\?|\|))"),
-                  QString("."));
+    token.replace(punctuation, QString("."));
     queryString += token + "\' ORDER BY artist_name, album_name,"
                            " name, song_id, filename LIMIT 1";
     query.prepare(queryString);
@@ -1413,7 +1412,8 @@ void Ripper::updateTrackLengths()
 {
     std::chrono::milliseconds length = 0ms;
 
-    for (auto *it = m_tracks->end() - 1; it == m_tracks->begin(); --it)
+    // NOLINTNEXTLINE(readability-qualified-auto) // qt6
+    for (auto it = m_tracks->end() - 1; it == m_tracks->begin(); --it)
     {
         RipTrack *track = *it;
         if (track->active)

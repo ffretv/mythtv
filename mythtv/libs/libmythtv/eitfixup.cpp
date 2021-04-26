@@ -18,6 +18,10 @@
 static const QRegularExpression kStereo { R"(\b\(?[sS]tereo\)?\b)" };
 static const QRegularExpression kUKSpaceColonStart { R"(^[ |:]*)" };
 
+#if QT_VERSION < QT_VERSION_CHECK(5,15,2)
+#define capturedView capturedRef
+#endif
+
 static const QMap<QChar,quint16> r2v = {
     {'I' ,   1}, {'V' ,   5}, {'X' ,   10}, {'L' , 50},
     {'C' , 100}, {'D' , 500}, {'M' , 1000},
@@ -231,7 +235,7 @@ void EITFixUp::FixBellExpressVu(DBEventEIT &event)
 {
     // A 0x0D character is present between the content
     // and the subtitle if its present
-    int position = event.m_description.indexOf(0x0D);
+    int position = event.m_description.indexOf('\r');
 
     if (position != -1)
     {
@@ -308,7 +312,7 @@ void EITFixUp::FixBellExpressVu(DBEventEIT &event)
     {
         // Parse out the year
         bool ok = false;
-        uint y = event.m_description.midRef(position + 1, 4).toUInt(&ok);
+        uint y = event.m_description.mid(position + 1, 4).toUInt(&ok);
         if (ok)
         {
             event.m_originalairdate = QDate(y, 1, 1);
@@ -328,6 +332,9 @@ void EITFixUp::FixBellExpressVu(DBEventEIT &event)
             QStringList actors =
                 tmp.split(bellActors, Qt::SkipEmptyParts);
 #endif
+
+            /* Possible TODO: if EIT inlcude the priority and/or character
+             * names for the actors, include them in AddPerson call. */
             for (const auto & actor : qAsConst(actors))
                 event.AddPerson(DBPerson::kActor, actor);
         }
@@ -869,6 +876,8 @@ void EITFixUp::FixUK(DBEventEIT &event)
     if (match.hasMatch())
     {
         // if we match this we've captured 2 actors and an (optional) airdate
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         event.AddPerson(DBPerson::kActor, match.captured(1));
         event.AddPerson(DBPerson::kActor, match.captured(2));
         if (match.captured(3).length() > 0)
@@ -1057,15 +1066,15 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
     auto match2 = comHemSeries2.match(event.m_title);
     if (match2.hasMatch())
     {
-        event.m_partnumber = match2.capturedRef(2).toUInt();
+        event.m_partnumber = match2.capturedView(2).toUInt();
         event.m_title.remove(match2.capturedStart(), match2.capturedLength());
     }
     else if (match.hasMatch())
     {
         if (match.capturedStart(1) != -1)
-            event.m_partnumber = match.capturedRef(1).toUInt();
+            event.m_partnumber = match.capturedView(1).toUInt();
         if (match.capturedStart(2) != -1)
-            event.m_parttotal = match.capturedRef(2).toUInt();
+            event.m_parttotal = match.capturedView(2).toUInt();
 
         // Remove the episode numbers, but only if it's not at the begining
         // of the description (subtitle code might use it)
@@ -1108,45 +1117,45 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
 
         // Original title, usually english title
         // note: list[1] contains extra () around the text that needs removing
-        if (!match.capturedRef(1).isEmpty())
+        if (!match.capturedView(1).isEmpty())
         {
-            replacement = match.capturedRef(1) + " ";
+            replacement = match.captured(1) + " ";
             //store it somewhere?
         }
 
         // Countr(y|ies)
-        if (!match.capturedRef(2).isEmpty())
+        if (!match.capturedView(2).isEmpty())
         {
-            replacement += match.capturedRef(2) + " ";
+            replacement += match.captured(2) + " ";
             //store it somewhere?
         }
 
         // Category
-        if (!match.capturedRef(3).isEmpty())
+        if (!match.capturedView(3).isEmpty())
         {
-            replacement += match.capturedRef(3) + ".";
+            replacement += match.captured(3) + ".";
             if(event.m_category.isEmpty())
             {
                 event.m_category = match.captured(3);
             }
 
-            if(match.capturedRef(3).indexOf("serie")!=-1)
+            if(match.captured(3).indexOf("serie")!=-1)
             {
                 isSeries = true;
             }
         }
 
         // Year
-        if (!match.capturedRef(4).isEmpty())
+        if (!match.capturedView(4).isEmpty())
         {
             bool ok = false;
-            uint y = match.capturedRef(4).trimmed().toUInt(&ok);
+            uint y = match.capturedView(4).trimmed().toUInt(&ok);
             if (ok)
                 event.m_airdate = y;
         }
 
         // Actors
-        if (!match.capturedRef(5).isEmpty())
+        if (!match.capturedView(5).isEmpty())
         {
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)
             const QStringList actors =
@@ -1155,6 +1164,8 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
             const QStringList actors =
                 match.captured(5).split(comHemPersSeparator, Qt::SkipEmptyParts);
 #endif
+            /* Possible TODO: if EIT inlcude the priority and/or character
+             * names for the actors, include them in AddPerson call. */
             for (const auto & actor : qAsConst(actors))
                 event.AddPerson(DBPerson::kActor, actor);
         }
@@ -1180,9 +1191,9 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
         static const QRegularExpression comHemDirector { "[Rr]egi" };
         static const QRegularExpression comHemActor    { "[Ss]kådespelare|[Ii] rollerna" };
         static const QRegularExpression comHemHost     { "[Pp]rogramledare" };
-        auto dmatch = comHemDirector.match(pmatch.capturedRef(1));
-        auto amatch = comHemActor.match(pmatch.capturedRef(1));
-        auto hmatch = comHemHost.match(pmatch.capturedRef(1));
+        auto dmatch = comHemDirector.match(pmatch.capturedView(1));
+        auto amatch = comHemActor.match(pmatch.capturedView(1));
+        auto hmatch = comHemHost.match(pmatch.capturedView(1));
         if (dmatch.hasMatch())
             role = DBPerson::kDirector;
         else if (amatch.hasMatch())
@@ -1202,6 +1213,8 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
         const QStringList actors =
             pmatch.captured(2).split(comHemPersSeparator, Qt::SkipEmptyParts);
 #endif
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         for (const auto & actor : qAsConst(actors))
             event.AddPerson(role, actor);
 
@@ -1239,28 +1252,28 @@ void EITFixUp::FixComHem(DBEventEIT &event, bool process_subtitle)
         return;
 
     // Rerun from today
-    if (match.capturedRef(1) == "i dag")
+    if (match.captured(1) == "i dag")
     {
         event.m_originalairdate = event.m_starttime.date();
         return;
     }
 
     // Rerun from yesterday afternoon
-    if (match.capturedRef(1) == "eftermiddagen")
+    if (match.captured(1) == "eftermiddagen")
     {
         event.m_originalairdate = event.m_starttime.date().addDays(-1);
         return;
     }
 
     // Rerun with day, month and possibly year specified
-    match2 = comHemRerun2.match(match.capturedRef(1));
+    match2 = comHemRerun2.match(match.capturedView(1));
     if (match2.hasMatch())
     {
-        int day   = match2.capturedRef(1).toInt();
-        int month = match2.capturedRef(2).toInt();
+        int day   = match2.capturedView(1).toInt();
+        int month = match2.capturedView(2).toInt();
         //int year;
         //if (match2.capturedLength(3) > 0)
-        //    year = match2.capturedRef(3).toInt();
+        //    year = match2.capturedView(3).toInt();
         //else
         //    year = event.m_starttime.date().year();
 
@@ -1365,7 +1378,7 @@ void EITFixUp::FixAUSeven(DBEventEIT &event)
     auto match = year.match(event.m_description);
     if (match.hasMatch())
     {
-        event.m_airdate = match.capturedRef(1).toUInt();
+        event.m_airdate = match.capturedView(1).toUInt();
         event.m_description.resize(event.m_description.size()-5);
     }
     if (event.m_description.endsWith(" CC"))
@@ -1410,7 +1423,7 @@ void EITFixUp::FixAUFreeview(DBEventEIT &event)
     {
         if (event.m_subtitle.isEmpty())//nine sometimes has an actual subtitle field and the brackets thingo)
             event.m_subtitle = match.captured(2);
-        event.m_airdate = match.capturedRef(3).toUInt();
+        event.m_airdate = match.capturedView(3).toUInt();
         event.m_description = match.captured(1);
         return;
     }
@@ -1418,7 +1431,7 @@ void EITFixUp::FixAUFreeview(DBEventEIT &event)
     match = auFreeviewY.match(event.m_description);
     if (match.hasMatch())
     {
-        event.m_airdate = match.capturedRef(2).toUInt();
+        event.m_airdate = match.capturedView(2).toUInt();
         event.m_description = match.captured(1);
         return;
     }
@@ -1428,8 +1441,10 @@ void EITFixUp::FixAUFreeview(DBEventEIT &event)
     {
         if (event.m_subtitle.isEmpty())
             event.m_subtitle = match.captured(2);
-        event.m_airdate = match.capturedRef(3).toUInt();
+        event.m_airdate = match.capturedView(3).toUInt();
         QStringList actors = match.captured(4).split("/");
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         for (int i = 0; i < actors.size(); ++i)
             event.AddPerson(DBPerson::kActor, actors.at(i));
         event.m_description = match.captured(1);
@@ -1439,8 +1454,10 @@ void EITFixUp::FixAUFreeview(DBEventEIT &event)
     match = auFreeviewYC.match(event.m_description);
     if (match.hasMatch())
     {
-        event.m_airdate = match.capturedRef(2).toUInt();
+        event.m_airdate = match.capturedView(2).toUInt();
         QStringList actors = match.captured(3).split("/");
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         for (int i = 0; i < actors.size(); ++i)
             event.AddPerson(DBPerson::kActor, actors.at(i));
         event.m_description = match.captured(1);
@@ -1470,7 +1487,7 @@ void EITFixUp::FixMCA(DBEventEIT &event)
         static const QString mcaCompleteTitlea { "^'?(" };
         static const QString mcaCompleteTitleb { R"([^\.\?]+[^\'])'?[\.\?]\s+(.+))" };
         static const QRegularExpression mcaCompleteTitle
-            { mcaCompleteTitlea + match.capturedRef(1) + mcaCompleteTitleb,
+            { mcaCompleteTitlea + match.captured(1) + mcaCompleteTitleb,
               QRegularExpression::CaseInsensitiveOption};
         match = mcaCompleteTitle.match(event.m_description);
         if (match.hasMatch())
@@ -1486,7 +1503,7 @@ void EITFixUp::FixMCA(DBEventEIT &event)
     if (match.hasMatch())
     {
         uint matchLen = match.capturedLength(1);
-        uint evDescLen = std::max(event.m_description.length(), 1);
+        uint evDescLen = std::max(static_cast<int>(event.m_description.length()), 1);
 
         if ((matchLen < lSUBTITLE_MAX_LEN) &&
             ((matchLen * 100 / evDescLen) < SUBTITLE_PCT))
@@ -1501,8 +1518,8 @@ void EITFixUp::FixMCA(DBEventEIT &event)
     match = mcaSeries.match(event.m_subtitle);
     if (match.hasMatch())
     {
-        uint season      = match.capturedRef(1).toUInt();
-        uint episode     = match.capturedRef(2).toUInt();
+        uint season      = match.capturedView(1).toUInt();
+        uint episode     = match.capturedView(2).toUInt();
         event.m_subtitle = match.captured(3).trimmed();
         event.m_syndicatedepisodenumber =
                 QString("S%1E%2").arg(season).arg(episode);
@@ -1577,6 +1594,8 @@ void EITFixUp::FixMCA(DBEventEIT &event)
             const QStringList actors = match.captured(2).split(
                 mcaActorsSeparator, Qt::SkipEmptyParts);
 #endif
+            /* Possible TODO: if EIT inlcude the priority and/or character
+             * names for the actors, include them in AddPerson call. */
             for (const auto & actor : qAsConst(actors))
                 event.AddPerson(DBPerson::kActor, actor.trimmed());
             event.m_description = match.captured(1).trimmed();
@@ -1596,7 +1615,7 @@ void EITFixUp::FixRTL(DBEventEIT &event)
     if (match.hasMatch())
     {
         event.m_season = 0;
-        event.m_episode  = match.capturedRef(1).toUInt();
+        event.m_episode  = match.capturedView(1).toUInt();
         event.m_subtitle = match.captured(2);
     }
 
@@ -1703,7 +1722,7 @@ void EITFixUp::FixRTL(DBEventEIT &event)
         if (match.hasMatch())
         {
             uint matchLen = match.capturedLength(1);
-            uint evDescLen = std::max(event.m_description.length(), 1);
+            uint evDescLen = std::max(static_cast<int>(event.m_description.length()), 1);
 
             if ((matchLen < lSUBTITLE_MAX_LEN) &&
                 (matchLen * 100 / evDescLen < SUBTITLE_PCT))
@@ -1752,6 +1771,8 @@ void EITFixUp::FixPRO7(DBEventEIT &event)
             auto match2 = pro7CastOne.match(line);
             if (match2.hasMatch())
             {
+                /* Possible TODO: if EIT inlcude the priority and/or character
+                 * names for the actors, include them in AddPerson call. */
                 event.AddPerson (DBPerson::kActor, match2.captured(1).simplified());
             }
         }
@@ -1780,6 +1801,9 @@ void EITFixUp::FixPRO7(DBEventEIT &event)
                 QStringList names = match2.captured(2).simplified().split(R"(\s*,\s*)");
                 for (const auto & name : qAsConst(names))
                 {
+                    /* Possible TODO: if EIT inlcude the priority
+                     * and/or character names for the actors, include
+                     * them in AddPerson call. */
                     event.AddPerson (role, name);
                 }
             }
@@ -1806,7 +1830,7 @@ void EITFixUp::FixDisneyChannel(DBEventEIT &event)
         {
             event.m_airdate = match.captured(3).toUInt();
         }
-	event.m_subtitle.remove(match.capturedStart(0),
+        event.m_subtitle.remove(match.capturedStart(0),
                                 match.capturedLength(0));
     }
     static const QRegularExpression tmp { R"(\s[^\s]+?-(Serie))" };
@@ -1917,6 +1941,8 @@ void EITFixUp::FixPremiere(DBEventEIT &event)
         const QStringList actors = match.captured(2).split(
             ", ", Qt::SkipEmptyParts);
 #endif
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         for (const auto & actor : qAsConst(actors))
             event.AddPerson(DBPerson::kActor, actor);
         event.m_description.remove(match.capturedStart(0),
@@ -2089,6 +2115,8 @@ void EITFixUp::FixNL(DBEventEIT &event)
         const QStringList actors =
             tmpActorsString.split(nlPersSeparator, Qt::SkipEmptyParts);
 #endif
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         for (const auto & actor : qAsConst(actors))
             event.AddPerson(DBPerson::kActor, actor);
         fullinfo.remove(match.capturedStart(), match.capturedLength());
@@ -2122,7 +2150,7 @@ void EITFixUp::FixNL(DBEventEIT &event)
     if (match.hasMatch())
     {
         bool ok = false;
-        uint y = match.capturedRef(1).toUInt(&ok);
+        uint y = match.capturedView(1).toUInt(&ok);
         if (ok)
             event.m_originalairdate = QDate(y, 1, 1);
     }
@@ -2131,7 +2159,7 @@ void EITFixUp::FixNL(DBEventEIT &event)
     if (match.hasMatch())
     {
         bool ok = false;
-        uint y = match.capturedRef(2).toUInt(&ok);
+        uint y = match.capturedView(2).toUInt(&ok);
         if (ok)
             event.m_originalairdate = QDate(y, 1, 1);
     }
@@ -2231,7 +2259,7 @@ void EITFixUp::FixNRK_DVBT(DBEventEIT &event)
     if (match.hasMatch() && (match.capturedLength(2) > 1))
     {
         event.m_title = match.captured(2);
-        event.m_description = "(" + match.capturedRef(1) + ") " + event.m_description;
+        event.m_description = "(" + match.captured(1) + ") " + event.m_description;
     }
 
     // Remove season premiere markings
@@ -2278,8 +2306,8 @@ void EITFixUp::FixDK(DBEventEIT &event)
     auto match = dkEpisode.match(event.m_title);
     if (match.hasMatch())
     {
-        episode = match.capturedRef(1).toInt();
-        event.m_partnumber = match.capturedRef(1).toInt();
+        episode = match.capturedView(1).toInt();
+        event.m_partnumber = match.capturedView(1).toInt();
         event.m_title.remove(match.capturedStart(), match.capturedLength());
     }
 
@@ -2287,9 +2315,9 @@ void EITFixUp::FixDK(DBEventEIT &event)
     match = dkPart.match(event.m_title);
     if (match.hasMatch())
     {
-        episode = match.capturedRef(1).toInt();
-        event.m_partnumber = match.capturedRef(1).toInt();
-        event.m_parttotal = match.capturedRef(2).toInt();
+        episode = match.capturedView(1).toInt();
+        event.m_partnumber = match.capturedView(1).toInt();
+        event.m_parttotal = match.capturedView(2).toInt();
         event.m_title.remove(match.capturedStart(), match.capturedLength());
     }
 
@@ -2319,7 +2347,7 @@ void EITFixUp::FixDK(DBEventEIT &event)
     match = dkSeason1.match(event.m_description);
     if (match.hasMatch())
     {
-        season = match.capturedRef(1).toInt();
+        season = match.capturedView(1).toInt();
     }
     else
     {
@@ -2327,7 +2355,7 @@ void EITFixUp::FixDK(DBEventEIT &event)
         match = dkSeason2.match(event.m_description);
         if (match.hasMatch())
         {
-            season = match.capturedRef(1).toInt();
+            season = match.capturedView(1).toInt();
         }
     }
 
@@ -2468,7 +2496,7 @@ void EITFixUp::FixDK(DBEventEIT &event)
     if (match.hasMatch())
     {
         bool ok = false;
-        uint y = match.capturedRef(1).toUInt(&ok);
+        uint y = match.capturedView(1).toUInt(&ok);
         if (ok)
             event.m_originalairdate = QDate(y, 1, 1);
     }
@@ -2664,7 +2692,7 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     if (match.hasMatch())
     {
         bool ok = false;
-        uint y = match.capturedRef(1).toUInt(&ok);
+        uint y = match.capturedView(1).toUInt(&ok);
         if (ok)
         {
             event.m_originalairdate = QDate(y, 1, 1);
@@ -2693,35 +2721,35 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     match = grSeason.match(event.m_title);
     if (match.hasMatch())
     {
-        if (!match.capturedRef(2).isEmpty()) // we found a letter representing a number
+        if (!match.capturedView(2).isEmpty()) // we found a letter representing a number
         {
             //sometimes Nat. TV writes numbers as letters, i.e Α=1, Β=2, Γ=3, etc
             //must convert them to numbers.
-            int tmpinteger = match.capturedRef(2).toUInt();
+            int tmpinteger = match.capturedView(2).toUInt();
             if (tmpinteger < 1)
             {
-                if (match.capturedRef(2) == "ΣΤ") // 6, don't ask!
+                if (match.captured(2) == "ΣΤ") // 6, don't ask!
                     event.m_season = 6;
                 else
                 {
                     static const QString LettToNumber = "0ΑΒΓΔΕ6ΖΗΘΙΚΛΜΝ";
-                    tmpinteger = LettToNumber.indexOf(match.capturedRef(2));
+                    tmpinteger = LettToNumber.indexOf(match.capturedView(2));
                     if (tmpinteger != -1)
                         event.m_season = tmpinteger;
                     else
                     //sometimes they use english letters instead of greek. Compensating:
                     {
                         static const QString LettToNumber2 = "0ABΓΔE6ZHΘIKΛMN";
-                        tmpinteger = LettToNumber2.indexOf(match.capturedRef(2));
+                        tmpinteger = LettToNumber2.indexOf(match.capturedView(2));
                         if (tmpinteger != -1)
                            event.m_season = tmpinteger;
                     }
                 }
             }
         }
-        else if (!match.capturedRef(3).isEmpty()) //number
+        else if (!match.capturedView(3).isEmpty()) //number
         {
-            event.m_season = match.capturedRef(3).toUInt();
+            event.m_season = match.capturedView(3).toUInt();
         }
         series = true;
         event.m_title.remove(match.capturedStart(), match.capturedLength());
@@ -2731,27 +2759,27 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     match = grSeason.match(event.m_description);
     if (match.hasMatch())
     {
-        if (!match.capturedRef(2).isEmpty()) // we found a letter representing a number
+        if (!match.capturedView(2).isEmpty()) // we found a letter representing a number
         {
             //sometimes Nat. TV writes numbers as letters, i.e Α=1, Β=2, Γ=3, etc
             //must convert them to numbers.
-            int tmpinteger = match.capturedRef(2).toUInt();
+            int tmpinteger = match.capturedView(2).toUInt();
             if (tmpinteger < 1)
             {
-                if (match.capturedRef(2) == "ΣΤ") // 6, don't ask!
+                if (match.captured(2) == "ΣΤ") // 6, don't ask!
                     event.m_season = 6;
                 else
                 {
                     static const QString LettToNumber = "0ΑΒΓΔΕ6ΖΗΘΙΚΛΜΝ";
-                    tmpinteger = LettToNumber.indexOf(match.capturedRef(2));
+                    tmpinteger = LettToNumber.indexOf(match.capturedView(2));
                     if (tmpinteger != -1)
                         event.m_season = tmpinteger;
                 }
             }
         }
-        else if (!match.capturedRef(3).isEmpty()) //number
+        else if (!match.capturedView(3).isEmpty()) //number
         {
-            event.m_season = match.capturedRef(3).toUInt();
+            event.m_season = match.capturedView(3).toUInt();
         }
         series = true;
         event.m_description.remove(match.capturedStart(), match.capturedLength());
@@ -2765,7 +2793,7 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     auto match2 = grSeasonAsRomanNumerals.match(event.m_description);
     if (match.hasMatch())
     {
-        if (!match.capturedRef(1).isEmpty()) //number
+        if (!match.capturedView(1).isEmpty()) //number
             event.m_season = parseRoman(match.captured(1).toUpper());
         series = true;
         event.m_title.remove(match.capturedStart(), match.capturedLength());
@@ -2775,7 +2803,7 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     }
     else if (match2.hasMatch())
     {
-        if (!match2.capturedRef(1).isEmpty()) //number
+        if (!match2.capturedView(1).isEmpty()) //number
             event.m_season = parseRoman(match2.captured(1).toUpper());
         series = true;
         event.m_description.remove(match2.capturedStart(), match2.capturedLength());
@@ -2791,15 +2819,15 @@ void EITFixUp::FixGreekEIT(DBEventEIT &event)
     match2 = grlongEp.match(event.m_description);
     if (match.hasMatch() || match2.hasMatch())
     {
-        if (!match.capturedRef(1).isEmpty())
+        if (!match.capturedView(1).isEmpty())
         {
-            event.m_episode = match.capturedRef(1).toUInt();
+            event.m_episode = match.capturedView(1).toUInt();
             series = true;
             event.m_title.remove(match.capturedStart(), match.capturedLength());
         }
-        else if (!match2.capturedRef(1).isEmpty())
+        else if (!match2.capturedView(1).isEmpty())
         {
-            event.m_episode = match2.capturedRef(1).toUInt();
+            event.m_episode = match2.capturedView(1).toUInt();
             series = true;
             event.m_description.remove(match2.capturedStart(), match2.capturedLength());
         }
@@ -2999,6 +3027,8 @@ void EITFixUp::FixUnitymedia(DBEventEIT &event)
     auto i = event.m_items.begin();
     while (i != event.m_items.end())
     {
+        /* Possible TODO: if EIT inlcude the priority and/or character
+         * names for the actors, include them in AddPerson call. */
         if ((QString::compare (i.key(), "Role Player") == 0) ||
             (QString::compare (i.key(), "Performing Artist") == 0))
         {
