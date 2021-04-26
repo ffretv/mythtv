@@ -1,4 +1,4 @@
-CUSTOM MIRROR from UPSTREAM WITH ONLY FUNCTIONAL FIXES BACKPORTED. This is NOT PATCHED FFRETV, but pure upstream with newer code backported randomly.
+CUSTOM MIRROR from UPSTREAM WITH ONLY FUNCTIONAL FIXES BACKPORTED. This is NOT PATCHED FFRETV, but pure upstream with newer code backported randomly into older releases.
 ***
 
 
