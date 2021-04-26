@@ -1,3 +1,15 @@
+CUSTOM MIRROR from UPSTREAM WITH ONLY FUNCTIONAL FIXES BACKPORTED. This is NOT PATCHED FFRETV, but pure upstream with newer code backported randomly.
+
+
+
+
+
+
+
+
+
+
+
 [![build](https://github.com/MythTV/mythtv/workflows/master/badge.svg)](https://github.com/MythTV/mythtv/actions)
 [![Coverity scan](https://scan.coverity.com/projects/153/badge.svg)](https://scan.coverity.com/projects/mythtv)
 [![GitHub issues](https://img.shields.io/github/issues/MythTV/mythtv)](https://github.com/MythTV/mythtv/issues)
