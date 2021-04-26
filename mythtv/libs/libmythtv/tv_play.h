@@ -17,6 +17,9 @@
 #include <QString>
 #include <QMutex>
 #include <QMap>
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+#include <QRecursiveMutex>
+#endif
 #include <QSet>
 
 // MythTV
@@ -204,7 +207,7 @@ class MTV_PUBLIC TV : public TVPlaybackState, public MythTVMenuItemDisplayer, pu
     static TV* AcquireRelease(int& RefCount, bool Acquire, bool Create = false);
     bool Init();
     void InitFromDB();
-    static QList<QKeyEvent> ConvertScreenPressKeyMap(const QString& KeyList);
+    static QList<QKeyEvent*> ConvertScreenPressKeyMap(const QString& KeyList);
 
     // Top level playback methods
     bool LiveTV(bool ShowDialogs, const ChannelInfoList &Selection);
@@ -492,6 +495,7 @@ class MTV_PUBLIC TV : public TVPlaybackState, public MythTVMenuItemDisplayer, pu
     void PlaybackMenuDeinit(const MythTVMenu& Menu);
     static void MenuStrings();
     void MenuLazyInit(void* Field);
+    const MythTVMenu& getMenuFromId(MenuTypeId id);
 
     // LCD
     void UpdateLCD();
@@ -549,12 +553,20 @@ class MTV_PUBLIC TV : public TVPlaybackState, public MythTVMenuItemDisplayer, pu
 
     // Ask Allow state
     QMap<QString,AskProgramInfo> m_askAllowPrograms;
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     QMutex                       m_askAllowLock {QMutex::Recursive};
+#else
+    QRecursiveMutex              m_askAllowLock;
+#endif
 
     QMutex                    m_progListsLock;
     QMap<QString,ProgramList> m_progLists;
 
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     mutable QMutex m_chanEditMapLock {QMutex::Recursive}; ///< Lock for chanEditMap and ddMap
+#else
+    mutable QRecursiveMutex m_chanEditMapLock; ///< Lock for chanEditMap and ddMap
+#endif
     InfoMap        m_chanEditMap;          ///< Channel Editing initial map
 
     class SleepTimerInfo;
@@ -594,8 +606,8 @@ class MTV_PUBLIC TV : public TVPlaybackState, public MythTVMenuItemDisplayer, pu
     ///  4  5   6  7
     ///  8  9  10 11
     static const int kScreenPressRegionCount = 12;
-    QList<QKeyEvent> m_screenPressKeyMapPlayback;
-    QList<QKeyEvent> m_screenPressKeyMapLiveTV;
+    QList<QKeyEvent*> m_screenPressKeyMapPlayback;
+    QList<QKeyEvent*> m_screenPressKeyMapLiveTV;
 
     // Channel changing timeout notification variables
     QElapsedTimer m_lockTimer;

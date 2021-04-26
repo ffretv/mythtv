@@ -7,6 +7,9 @@
 #include <QCoreApplication>
 #include <QRegularExpression>
 #include <QStringList>
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+#include <QStringConverter>
+#endif
 #include <QTextStream>
 #include <QDir>
 #include <QKeyEvent>
@@ -394,7 +397,11 @@ NetworkControlClient::NetworkControlClient(QTcpSocket *s)
 {
     m_socket = s;
     m_textStream = new QTextStream(s);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     m_textStream->setCodec("UTF-8");
+#else
+    m_textStream->setEncoding(QStringConverter::Utf8);
+#endif
     connect(m_socket, &QIODevice::readyRead, this, &NetworkControlClient::readClient);
 }
 
@@ -557,7 +564,7 @@ QString NetworkControl::processKey(NetworkCommand *nc)
         {
             return QString("ERROR: Invalid syntax at '%1', see 'help %2' for "
                            "usage information")
-                           .arg(nc->getArg(curToken)).arg(nc->getArg(0));
+                           .arg(nc->getArg(curToken), nc->getArg(0));
         }
 
         curToken++;
@@ -640,8 +647,9 @@ QString NetworkControl::processPlay(NetworkCommand *nc, int clientID)
                 action = "RESUME";
 
             QString msg = QString("NETWORK_CONTROL %1 PROGRAM %2 %3 %4")
-                                      .arg(action).arg(nc->getArg(2))
-                                      .arg(nc->getArg(3).toUpper()).arg(clientID);
+                                      .arg(action, nc->getArg(2),
+                                           nc->getArg(3).toUpper(),
+                                           QString::number(clientID));
 
             result.clear();
             m_gotAnswer = false;
@@ -756,26 +764,22 @@ QString NetworkControl::processPlay(NetworkCommand *nc, int clientID)
             if (is_abbrev("setvolume", nc->getArg(2)))
             {
                 message = QString("MUSIC_COMMAND %1 SET_VOLUME %2")
-                                .arg(hostname)
-                                .arg(nc->getArg(3));
+                                .arg(hostname, nc->getArg(3));
             }
             else if (is_abbrev("track", nc->getArg(2)))
             {
                 message = QString("MUSIC_COMMAND %1 PLAY_TRACK %2")
-                                .arg(hostname)
-                                .arg(nc->getArg(3));
+                                .arg(hostname, nc->getArg(3));
             }
             else if (is_abbrev("url", nc->getArg(2)))
             {
                 message = QString("MUSIC_COMMAND %1 PLAY_URL %2")
-                                .arg(hostname)
-                                .arg(nc->getArg(3));
+                                .arg(hostname, nc->getArg(3));
             }
             else if (is_abbrev("file", nc->getArg(2)))
             {
                 message = QString("MUSIC_COMMAND %1 PLAY_FILE '%2'")
-                                .arg(hostname)
-                                .arg(nc->getFrom(3));
+                                .arg(hostname, nc->getFrom(3));
             }
             else
             {
@@ -831,9 +835,9 @@ QString NetworkControl::processPlay(NetworkCommand *nc, int clientID)
             message = "NETWORK_CONTROL SEEK BACKWARD";
         else if (nc->getArg(2).contains(QRegularExpression(R"(^\d\d:\d\d:\d\d$)")))
         {
-            int hours   = nc->getArg(2).midRef(0, 2).toInt();
-            int minutes = nc->getArg(2).midRef(3, 2).toInt();
-            int seconds = nc->getArg(2).midRef(6, 2).toInt();
+            int hours   = nc->getArg(2).mid(0, 2).toInt();
+            int minutes = nc->getArg(2).mid(3, 2).toInt();
+            int seconds = nc->getArg(2).mid(6, 2).toInt();
             message = QString("NETWORK_CONTROL SEEK POSITION %1")
                               .arg((hours * 3600) + (minutes * 60) + seconds);
         }
@@ -963,12 +967,12 @@ QString NetworkControl::processQuery(NetworkCommand *nc)
         int dbSchema = gCoreContext->GetNumSetting("DBSchemaVer");
 
         return QString("VERSION: %1/%2 %3 %4 QT/%5 DBSchema/%6")
-                       .arg(GetMythSourceVersion())
-                       .arg(GetMythSourcePath())
-                       .arg(MYTH_BINARY_VERSION)
-                       .arg(MYTH_PROTO_VERSION)
-                       .arg(QT_VERSION_STR)
-                       .arg(dbSchema);
+                       .arg(GetMythSourceVersion(),
+                            GetMythSourcePath(),
+                            MYTH_BINARY_VERSION,
+                            MYTH_PROTO_VERSION,
+                            QT_VERSION_STR,
+                            QString::number(dbSchema));
 
     }
     else if(is_abbrev("time", nc->getArg(1)))
@@ -1159,7 +1163,7 @@ QString NetworkControl::processTheme( NetworkCommand* nc)
     {
         QString themeName = GetMythUI()->GetThemeName();
         QString themeDir = GetMythUI()->GetThemeDir();
-        return QString("%1 - %2").arg(themeName).arg(themeDir);
+        return QString("%1 - %2").arg(themeName, themeDir);
     }
     if (nc->getArg(1) == "reload")
     {
@@ -1305,7 +1309,7 @@ QString NetworkControl::processTheme( NetworkCommand* nc)
         type->SetArea(MythRect(x, y, w, h));
 
         return QString("Changed area of '%1' to x:%2, y:%3, w:%4, h:%5")
-                       .arg(widgetName).arg(x).arg(y).arg(w).arg(h);
+                       .arg(widgetName, x, y, w, h);
     }
 
     return QString("ERROR: See 'help %1' for usage information")
@@ -1682,11 +1686,10 @@ QString NetworkControl::listSchedule(const QString& chanID)
 
             result +=
                 QString("%1 %2 %3 %4")
-                .arg(QString::number(query.value(0).toInt())
-                     .rightJustified(5, ' '))
-                .arg(MythDate::as_utc(query.value(1).toDateTime()).toString(Qt::ISODate))
-                .arg(MythDate::as_utc(query.value(2).toDateTime()).toString(Qt::ISODate))
-                .arg(atitle.constData());
+                .arg(QString::number(query.value(0).toInt()).rightJustified(5, ' '),
+                     MythDate::as_utc(query.value(1).toDateTime()).toString(Qt::ISODate),
+                     MythDate::as_utc(query.value(2).toDateTime()).toString(Qt::ISODate),
+                     atitle);
 
             if (appendCRLF)
                 result += "\r\n";
@@ -1731,9 +1734,7 @@ QString NetworkControl::listRecordings(const QString& chanid, const QString& sta
 
             if (!subtitle.isEmpty())
             {
-                episode = QString("%1 -\"%2\"")
-                                  .arg(title)
-                                  .arg(subtitle);
+                episode = QString("%1 -\"%2\"").arg(title, subtitle);
             }
             else
             {
@@ -1741,9 +1742,10 @@ QString NetworkControl::listRecordings(const QString& chanid, const QString& sta
             }
 
             result +=
-                QString("%1 %2 %3").arg(query.value(0).toInt())
-                .arg(MythDate::as_utc(query.value(1).toDateTime()).toString(Qt::ISODate))
-                .arg(episode);
+                QString("%1 %2 %3")
+                .arg(query.value(0).toString(),
+                     MythDate::as_utc(query.value(1).toDateTime()).toString(Qt::ISODate),
+                     episode);
 
             if (appendCRLF)
                 result += "\r\n";
@@ -1797,9 +1799,10 @@ QString NetworkControl::listChannels(const uint start, const uint limit)
         // <current line count>:<max line count to expect> <channelid> <callsign name> <channel name>\r\n
         cnt++;
         result += QString("%1:%2 %3 \"%4\" \"%5\"\r\n")
-                          .arg(cnt).arg(maxcnt).arg(query.value(0).toInt())
-                          .arg(query.value(1).toString())
-                          .arg(query.value(2).toString());
+                          .arg(cnt).arg(maxcnt)
+                          .arg(query.value(0).toString(),
+                               query.value(1).toString(),
+                               query.value(2).toString());
     }
 
     return result;

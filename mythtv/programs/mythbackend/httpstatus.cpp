@@ -17,6 +17,10 @@
 #include <cstdlib>
 
 // Qt headers
+#include <QtGlobal>
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+#include <QStringConverter>
+#endif
 #include <QTextStream>
 
 // MythTV headers
@@ -142,7 +146,11 @@ void HttpStatus::GetStatusXML( HTTPRequest *pRequest )
     pRequest->m_mapRespHeaders[ "Cache-Control" ] = "no-cache=\"Ext\", max-age = 5000";
 
     QTextStream stream( &pRequest->m_response );
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     stream.setCodec("UTF-8");   // Otherwise locale default is used.
+#else
+    stream.setEncoding(QStringConverter::Utf8);
+#endif
     stream << doc.toString();
 }
 
@@ -329,7 +337,7 @@ void HttpStatus::FillStatusXML( QDomDocument *pDoc )
         backends.appendChild(mbe);
         mbe.setAttribute("type", "Master");
         mbe.setAttribute("name", masterhost);
-        mbe.setAttribute("url" , masterip + ":" + masterport);
+        mbe.setAttribute("url" , masterip + ":" + QString::number(masterport));
     }
 
     SSDPCacheEntries *sbes = SSDP::Find(
@@ -621,7 +629,11 @@ void HttpStatus::FillStatusXML( QDomDocument *pDoc )
 
 void HttpStatus::PrintStatus( QTextStream &os, QDomDocument *pDoc )
 {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     os.setCodec("UTF-8");
+#else
+    os.setEncoding(QStringConverter::Utf8);
+#endif
 
     QDateTime qdtNow = MythDate::current();
 
@@ -739,7 +751,7 @@ int HttpStatus::PrintEncoderStatus( QTextStream &os, const QDomElement& encoders
                 {
                     SleepStatus sleepStatus =
                         (SleepStatus) e.attribute("sleepstatus",
-                            QString((int)sStatus_Undefined)).toInt();
+                            QString::number(sStatus_Undefined)).toInt();
 
                     if (sleepStatus == sStatus_Asleep)
                         os << " (currently asleep).<br />";

@@ -485,6 +485,23 @@ class RegionID : public MythUISpinBoxSetting
     };
 };
 
+class LCNOffset : public MythUISpinBoxSetting
+{
+  public:
+    LCNOffset(const VideoSource &parent, signed int value, signed int min_val) :
+        MythUISpinBoxSetting(new VideoSourceDBStorage(this, parent, "lcnoffset"),
+                             min_val, 20000, 100)
+    {
+       setLabel(QObject::tr("Logical Channel Number Offset"));
+       setHelpText(QObject::tr("The offset is added to each logical channel number found "
+                               "during a scan of a DVB video source. This makes it possible "
+                               "to give different video sources a non-overlapping range "
+                               "of channel numbers. Leave at 0 if you have only one video source "
+                               "or if the video sources do not have DVB logical channel numbers."));
+       setValue(value);
+    };
+};
+
 FreqTableSelector::FreqTableSelector(const VideoSource &parent) :
     MythUIComboBoxSetting(new VideoSourceDBStorage(this, parent, "freqtable"))
 {
@@ -600,7 +617,7 @@ XMLTV_generic_config::XMLTV_generic_config(const VideoSource& _parent,
     setVisible(false);
 
     QString filename = QString("%1/%2.xmltv")
-        .arg(GetConfDir()).arg(m_parent.getSourceName());
+        .arg(GetConfDir(), m_parent.getSourceName());
 
     m_grabberArgs.push_back("--config-file");
     m_grabberArgs.push_back(filename);
@@ -701,6 +718,7 @@ VideoSource::VideoSource()
     addChild(new DVBNetID(*this, -1, -1));
     addChild(new BouquetID(*this, 0, 0));
     addChild(new RegionID(*this, 0, 0));
+    addChild(new LCNOffset(*this, 0, 0));
 }
 
 bool VideoSource::canDelete(void)
@@ -1444,7 +1462,7 @@ class UseHDHomeRunDevice : public TransMythUICheckBoxSetting
                                 QString &ipaddr)
     {
         setLabel(QObject::tr("Use HDHomeRun %1 (%2 %3)")
-                 .arg(deviceid).arg(model).arg(ipaddr));
+                 .arg(deviceid, model, ipaddr));
         setValue(false);
         setHelpText(
             QObject::tr("If enabled, use tuners from this HDHomeRun "
@@ -1636,13 +1654,13 @@ VBoxDeviceID::VBoxDeviceID(const CaptureCard &parent) :
 void VBoxDeviceID::SetIP(const QString &ip)
 {
     m_ip = ip;
-    setValue(QString("%1-%2").arg(m_ip).arg(m_tuner));
+    setValue(QString("%1-%2").arg(m_ip, m_tuner));
 }
 
 void VBoxDeviceID::SetTuner(const QString &tuner)
 {
     m_tuner = tuner;
-    setValue(QString("%1-%2").arg(m_ip).arg(m_tuner));
+    setValue(QString("%1-%2").arg(m_ip, m_tuner));
 }
 
 void VBoxDeviceID::SetOverrideDeviceID(const QString &deviceid)
@@ -2097,7 +2115,7 @@ void CetonDeviceID::SetIP(const QString &ip)
     if (match.hasMatch())
     {
         m_ip = ip;
-        setValue(QString("%1-RTP.%3").arg(m_ip).arg(m_tuner));
+        setValue(QString("%1-RTP.%3").arg(m_ip, m_tuner));
     }
 }
 
@@ -2108,7 +2126,7 @@ void CetonDeviceID::SetTuner(const QString &tuner)
     if (match.hasMatch())
     {
         m_tuner = tuner;
-        setValue(QString("%1-RTP.%2").arg(m_ip).arg(m_tuner));
+        setValue(QString("%1-RTP.%2").arg(m_ip, m_tuner));
     }
 }
 
@@ -2173,7 +2191,7 @@ class SchedGroupFalse : public MythUICheckBoxSetting
 
 V4LConfigurationGroup::V4LConfigurationGroup(CaptureCard& parent,
                                              CardType& cardtype,
-                                             const QString inputtype) :
+                                             const QString &inputtype) :
     m_parent(parent),
     m_cardInfo(new GroupSetting()),
     m_vbiDev(new VBIDevice(m_parent))
@@ -3729,8 +3747,8 @@ void CardInputEditor::Load(void)
         auto *cardinput = new CardInput(cardtype, videodevice, cardid);
         cardinput->loadByID(cardid);
         QString inputlabel = QString("%1 (%2) -> %3")
-            .arg(CardUtil::GetDeviceLabel(cardtype, videodevice))
-            .arg(inputname).arg(cardinput->getSourceName());
+            .arg(CardUtil::GetDeviceLabel(cardtype, videodevice),
+                 inputname, cardinput->getSourceName());
         m_cardInputs.push_back(cardinput);
         cardinput->setLabel(inputlabel);
         addChild(cardinput);
@@ -4113,14 +4131,14 @@ void SatIPConfigurationGroup::FillDeviceList(void)
         device.m_friendlyName = name;
         device.m_tunerNo = tunerno;
         device.m_tunerType = tunertype;
-        device.m_mythDeviceId = QString("%1:%2:%3").arg(id).arg(tunertype).arg(tunerno);
+        device.m_mythDeviceId = QString("%1:%2:%3").arg(id, tunertype, tunerno);
 
-        QString friendlyIdentifier = QString("%1, %2, Tuner #%3").arg(name).arg(tunertype).arg(tunerno);
+        QString friendlyIdentifier = QString("%1, %2, Tuner #%3").arg(name, tunertype, tunerno);
 
         m_deviceList[device.m_mythDeviceId] = device;
 
         LOG(VB_CHANNEL, LOG_DEBUG, QString("SatIP: Add %1 '%2' '%3'")
-            .arg(device.m_mythDeviceId).arg(device.m_friendlyName).arg(friendlyIdentifier));
+            .arg(device.m_mythDeviceId, device.m_friendlyName, friendlyIdentifier));
     }
 
     // Now find configured devices
@@ -4191,7 +4209,7 @@ void SatIPDeviceIDList::fillSelections(const QString &cur)
     for(; it != m_deviceList->end(); ++it)
     {
         QString friendlyIdentifier = QString("%1, %2, Tuner #%3")
-            .arg((*it).m_friendlyName).arg((*it).m_tunerType).arg((*it).m_tunerNo);
+            .arg((*it).m_friendlyName, (*it).m_tunerType, (*it).m_tunerNo);
         names.push_back(friendlyIdentifier);
 
         devs.push_back(it.key());

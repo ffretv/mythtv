@@ -39,9 +39,9 @@ bool MetaIOID3::OpenFile(const QString &filename, bool forWriting)
     {
         LOG(VB_FILE, LOG_DEBUG,
                         QString("MetaIO switch file: %1 New File: %2 Type: %3")
-                                    .arg(m_filename)
-                                    .arg(filename)
-                                    .arg(m_fileType));
+                                    .arg(m_filename,
+                                         filename,
+                                         QString::number(m_fileType)));
     }
 
     // If a file is open but it's not the requested file then close it first
@@ -589,7 +589,7 @@ AttachedPictureFrame* MetaIOID3::findAPIC(TagLib::ID3v2::Tag *tag,
   {
     auto *f = dynamic_cast<AttachedPictureFrame *>(frame);
     if (f && f->type() == type &&
-        (description.isNull() || f->description() == description))
+        (description.isEmpty() || f->description() == description))
       return f;
   }
   return nullptr;

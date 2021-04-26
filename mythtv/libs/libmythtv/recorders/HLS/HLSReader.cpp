@@ -1,6 +1,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <QtGlobal>
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+#include <QStringConverter>
+#endif
+
 #include "HLSReader.h"
 #include "HLS/m3u.h"
 
@@ -60,7 +65,11 @@ bool HLSReader::Open(const QString & m3u, int bitrate_index)
 #endif
 
     QTextStream text(&buffer);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     text.setCodec("UTF-8");
+#else
+    text.setEncoding(QStringConverter::Utf8);
+#endif
 
     if (!IsValidPlaylist(text))
     {
@@ -103,7 +112,7 @@ bool HLSReader::Open(const QString & m3u, int bitrate_index)
             return false;
         }
 
-        m_curstream = *(m_streams.begin() + (m_bitrateIndex - 1));
+        m_curstream = m_streams[m_streams.keys().at(m_bitrateIndex - 1)];
     }
 
     if (!m_curstream)

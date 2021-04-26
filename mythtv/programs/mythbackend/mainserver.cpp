@@ -118,7 +118,7 @@ bool delete_file_immediately(const QString &filename,
             {
                 LOG(VB_GENERAL, LOG_ERR, LOC +
                     QString("Error deleting '%1' -> '%2'")
-                    .arg(filename).arg(linktext) + ENO);
+                    .arg(filename, linktext) + ENO);
             }
         }
     }
@@ -126,7 +126,7 @@ bool delete_file_immediately(const QString &filename,
             !(success2 = checkFile.remove()))
     {
         LOG(VB_GENERAL, LOG_ERR, LOC + QString("Error deleting '%1': %2")
-                .arg(filename).arg(strerror(errno)));
+                .arg(filename, strerror(errno)));
     }
     return success1 && success2;
 }
@@ -1511,7 +1511,7 @@ void MainServer::customEvent(QEvent *e)
         if (me->Message() == "IMAGE_GET_METADATA")
             ImageManagerBe::getInstance()->HandleGetMetadata(me->ExtraData());
 
-        MythEvent mod_me("");
+        std::unique_ptr<MythEvent> mod_me {nullptr};
         if (me->Message().startsWith("MASTER_UPDATE_REC_INFO"))
         {
             QStringList tokens = me->Message().simplified().split(" ");
@@ -1530,8 +1530,7 @@ void MainServer::customEvent(QEvent *e)
 
                 QStringList list;
                 evinfo.ToStringList(list);
-                mod_me = MythEvent("RECORDING_LIST_CHANGE UPDATE", list);
-                me = &mod_me;
+                mod_me = std::make_unique<MythEvent>("RECORDING_LIST_CHANGE UPDATE", list);
             }
             else
             {
@@ -1555,15 +1554,22 @@ void MainServer::customEvent(QEvent *e)
             if ((tokens.size() >= 2) && (tokens[1] == "FINISHED"))
                 m_downloadURLs.remove(localFile);
 
-            mod_me = MythEvent(me->Message(), extraDataList);
-            me = &mod_me;
+            mod_me = std::make_unique<MythEvent>(me->Message(), extraDataList);
         }
 
         if (broadcast.empty())
         {
             broadcast.push_back("BACKEND_MESSAGE");
-            broadcast.push_back(me->Message());
-            broadcast += me->ExtraDataList();
+            if (mod_me != nullptr)
+            {
+                broadcast.push_back(mod_me->Message());
+                broadcast += mod_me->ExtraDataList();
+            }
+            else
+            {
+                broadcast.push_back(me->Message());
+                broadcast += me->ExtraDataList();
+            }
         }
     }
 
@@ -2580,8 +2586,7 @@ void MainServer::DeleteRecordedFiles(DeleteStruct *ds)
                 MythDB::DBError("RecordedFiles deletion", update);
                 LOG(VB_GENERAL, LOG_ERR, LOC +
                     QString("Error querying recordedfile (%1) for %2.")
-                                .arg(query.value(1).toString())
-                                .arg(logInfo));
+                                .arg(query.value(1).toString(), logInfo));
             }
         }
     }
@@ -3931,7 +3936,7 @@ void MainServer::HandleSGGetFileList(QStringList &sList,
     LOG(VB_FILE, LOG_INFO,  LOC +
         QString("HandleSGGetFileList: group = %1  host = %2 "
                 " path = %3 wanthost = %4")
-            .arg(groupname).arg(host).arg(path).arg(wantHost));
+            .arg(groupname, host, path, wantHost));
 
     QString addr = gCoreContext->GetBackendServerIP();
 
@@ -4019,7 +4024,7 @@ void MainServer::HandleQueryFindFile(QStringList &slist, PlaybackSock *pbs)
 
     LOG(VB_FILE, LOG_INFO, LOC +
         QString("Looking for file '%1' on host '%2' in group '%3' (useregex: %4, allowfallback: %5")
-        .arg(filename).arg(hostname).arg(storageGroup).arg(useRegex).arg(allowFallback));
+        .arg(filename, hostname, storageGroup).arg(useRegex).arg(allowFallback));
 
     // first check the given host
     if (gCoreContext->IsThisHost(hostname))
@@ -4034,7 +4039,8 @@ void MainServer::HandleQueryFindFile(QStringList &slist, PlaybackSock *pbs)
             QFileInfo fi(filename);
             QStringList files = sgroup.GetFileList('/' + fi.path());
 
-            LOG(VB_FILE, LOG_INFO, LOC + QString("Looking in dir '%1' for '%2'").arg(fi.path()).arg(fi.fileName()));
+            LOG(VB_FILE, LOG_INFO, LOC + QString("Looking in dir '%1' for '%2'")
+                .arg(fi.path(), fi.fileName()));
 
             for (int x = 0; x < files.size(); x++)
             {
@@ -4120,7 +4126,8 @@ void MainServer::HandleQueryFindFile(QStringList &slist, PlaybackSock *pbs)
                     QFileInfo fi(filename);
                     QStringList files = sgroup.GetFileList('/' + fi.path());
 
-                    LOG(VB_FILE, LOG_INFO, LOC + QString("Looking in dir '%1' for '%2'").arg(fi.path()).arg(fi.fileName()));
+                    LOG(VB_FILE, LOG_INFO, LOC + QString("Looking in dir '%1' for '%2'")
+                        .arg(fi.path(), fi.fileName()));
 
                     for (int x = 0; x < files.size(); x++)
                     {
@@ -5404,8 +5411,7 @@ void MainServer::GetFilesystemInfos(QList<FileSystemInfo> &fsInfos,
         {
             QString msg =
                 QString("Dir: %1:%2")
-                    .arg(it1->getHostname())
-                    .arg(it1->getPath());
+                    .arg(it1->getHostname(), it1->getPath());
             LOG(VB_FILE | VB_SCHEDULE, LOG_INFO, LOC + msg) ;
             LOG(VB_FILE | VB_SCHEDULE, LOG_INFO, LOC +
                 QString("     Location: %1")
@@ -5802,7 +5808,7 @@ void MainServer::HandleDownloadFile(const QStringList &command,
     {
         LOG(VB_GENERAL, LOG_ERR, LOC +
             QString("ERROR: %1 write filename '%2' does not pass "
-                    "sanity checks.") .arg(command[0]).arg(filename));
+                    "sanity checks.") .arg(command[0], filename));
         retlist << "downloadfile_filename_dangerous";
         if (pbssock)
             SendResponse(pbssock, retlist);
@@ -7656,8 +7662,8 @@ void MainServer::HandlePixmapGetIfModified(
                     strlist = QStringList("ERROR");
                     strlist +=
                         QString("3: Failed to read preview file '%1'%2")
-                        .arg(pginfo.GetPathname())
-                        .arg((open_ok) ? "" : " open failed");
+                        .arg(pginfo.GetPathname(),
+                             (open_ok) ? "" : " open failed");
                 }
             }
             else if (out_of_date && (max_file_size > 0))
@@ -8112,7 +8118,7 @@ QString MainServer::LocalFilePath(const QString &path, const QString &wantgroup)
                 LOG(VB_GENERAL, LOG_ERR, LOC +
                     QString("ERROR: LocalFilePath unable to find local "
                             "path for '%1', found '%2' instead.")
-                        .arg(lpath).arg(pburl));
+                        .arg(lpath, pburl));
                 lpath = "";
             }
         }
@@ -8139,7 +8145,7 @@ QString MainServer::LocalFilePath(const QString &path, const QString &wantgroup)
                 LOG(VB_FILE, LOG_INFO, LOC +
                     QString("LocalFilePath(%1 '%2'), found file through "
                             "exhaustive search at '%3'")
-                        .arg(path).arg(opath).arg(lpath));
+                        .arg(path, opath, lpath));
             }
             else
             {
@@ -8181,8 +8187,8 @@ void MainServer::reconnectTimeout(void)
     LOG(VB_GENERAL, LOG_NOTICE, LOC + "Connected successfully");
 
     QString str = QString("ANN SlaveBackend %1 %2")
-                          .arg(gCoreContext->GetHostName())
-                          .arg(gCoreContext->GetBackendServerIP());
+                          .arg(gCoreContext->GetHostName(),
+                               gCoreContext->GetBackendServerIP());
 
     QStringList strlist( str );
 

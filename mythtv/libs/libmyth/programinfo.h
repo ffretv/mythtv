@@ -310,7 +310,8 @@ class MPUBLIC ProgramInfo
     void ToStringList(QStringList &list) const;
     virtual void ToMap(InfoMap &progMap,
                        bool showrerecord = false,
-                       uint star_range = 10) const;
+                       uint star_range = 10,
+                       uint date_format = 0) const;
     virtual void SubstituteMatches(QString &str);
 
     // Used for scheduling recordings
@@ -468,12 +469,14 @@ class MPUBLIC ProgramInfo
     uint    GetFindID(void)               const { return m_findId;       }
 
     uint32_t GetProgramFlags(void)        const { return m_programFlags; }
+    QString GetProgramFlagNames(void)     const;
     ProgramInfoType GetProgramInfoType(void) const
         { return (ProgramInfoType)((m_programFlags & FL_TYPEMASK) >> 20); }
     QDateTime GetBookmarkUpdate(void) const { return m_bookmarkUpdate; }
     bool IsGeneric(void) const;
     bool IsInUsePlaying(void)   const { return (m_programFlags & FL_INUSEPLAYING) != 0U;}
     bool IsCommercialFree(void) const { return (m_programFlags & FL_CHANCOMMFREE) != 0U;}
+    bool IsCommercialFlagged(void) const { return (m_programFlags & FL_COMMFLAG) != 0U;}
     bool HasCutlist(void)       const { return (m_programFlags & FL_CUTLIST) != 0U;     }
     bool IsBookmarkSet(void)    const { return (m_programFlags & FL_BOOKMARK) != 0U;    }
     bool IsWatched(void)        const { return (m_programFlags & FL_WATCHED) != 0U;     }
@@ -487,12 +490,18 @@ class MPUBLIC ProgramInfo
     bool IsDeletePending(void)  const
         { return (m_programFlags & FL_DELETEPENDING) != 0U; }
 
-    uint GetSubtitleType(void)    const
-        { return (m_properties&kSubtitlePropertyMask)>>kSubtitlePropertyOffset; }
-    uint GetVideoProperties(void) const
-        { return (m_properties & kVideoPropertyMask) >> kVideoPropertyOffset; }
-    uint GetAudioProperties(void) const
-        { return (m_properties & kAudioPropertyMask) >> kAudioPropertyOffset; }
+    uint GetSubtitleType(void)    const { return m_subtitleProperties; }
+    QString GetSubtitleTypeNames(void) const;
+    uint GetVideoProperties(void) const { return m_videoProperties; }
+    QString GetVideoPropertyNames(void) const;
+    uint GetAudioProperties(void) const { return m_audioProperties; }
+    QString GetAudioPropertyNames(void) const;
+
+    static uint SubtitleTypesFromNames(const QString & names);
+    static uint VideoPropertiesFromNames(const QString & names);
+    static uint AudioPropertiesFromNames(const QString & names);
+
+    void ProgramFlagsFromNames(const QString & names);
 
     enum Verbosity
     {
@@ -795,8 +804,9 @@ class MPUBLIC ProgramInfo
     uint32_t        m_findId            {0};
 
     uint32_t        m_programFlags      {FL_NONE}; ///< ProgramFlag
-                    /// SubtitleType,VideoProperty,AudioProperty
-    uint16_t        m_properties        {0};
+    VideoPropsType    m_videoProperties   {VID_UNKNOWN};
+    AudioPropsType    m_audioProperties   {AUD_UNKNOWN};
+    SubtitlePropsType m_subtitleProperties {SUB_UNKNOWN};
     uint16_t        m_year              {0};
     uint16_t        m_partNumber        {0};
     uint16_t        m_partTotal         {0};

@@ -200,8 +200,7 @@ bool MSqlDatabase::OpenDatabase(bool skipdb)
         {
             LOG(VB_DATABASE, LOG_INFO,
                     QString("[%1] Connected to database '%2' at host: %3")
-                            .arg(m_name)
-                            .arg(m_db.databaseName()).arg(m_db.hostName()));
+                        .arg(m_name, m_db.databaseName(), m_db.hostName()));
 
             InitSessionVars();
 
@@ -650,10 +649,14 @@ bool MSqlQuery::exec()
     if (!result)
     {
         QString err = MythDB::GetError("MSqlQuery", *this);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         MSqlBindings tmp = QSqlQuery::boundValues();
+#else
+        QVariantList tmp = QSqlQuery::boundValues();
+#endif
         bool has_null_strings = false;
         // NOLINTNEXTLINE(modernize-loop-convert)
-        for (MSqlBindings::iterator it = tmp.begin(); it != tmp.end(); ++it)
+        for (auto it = tmp.begin(); it != tmp.end(); ++it)
         {
             if (it->type() != QVariant::String)
                 continue;
@@ -665,7 +668,12 @@ bool MSqlQuery::exec()
         }
         if (has_null_strings)
         {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
             bindValues(tmp);
+#else
+	    for (int i = 0; i < static_cast<int>(tmp.size()); i++)
+		QSqlQuery::bindValue(i, tmp.at(i));
+#endif
             timer.restart();
             result = QSqlQuery::exec();
             elapsed = timer.elapsed();
@@ -691,19 +699,34 @@ bool MSqlQuery::exec()
             // the values in bound queries against a MySQL5 database.
             // So, replace the named placeholders with their values.
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
             QMapIterator<QString, QVariant> b = boundValues();
             while (b.hasNext())
             {
                 b.next();
                 str.replace(b.key(), '\'' + b.value().toString() + '\'');
             }
+#else
+            QVariantList b = boundValues();
+            static const QRegularExpression placeholders { "(:\\w+)" };
+            auto match = placeholders.match(str);
+            while (match.hasMatch())
+            {
+                str.replace(match.capturedStart(), match.capturedLength(),
+                            b.isEmpty()
+                            ? "\'INVALID\'"
+                            : '\'' + b.takeFirst().toString() + '\'');
+                match = placeholders.match(str);
+            }
+#endif
 
             LOG(VB_DATABASE, LOG_INFO,
                 QString("MSqlQuery::exec(%1) %2%3%4")
-                        .arg(m_db->MSqlDatabase::GetConnectionName()).arg(str)
-                        .arg(QString(" <<<< Took %1ms").arg(QString::number(elapsed)))
-                        .arg(isSelect() ? QString(", Returned %1 row(s)")
-                                              .arg(size()) : QString()));
+                        .arg(m_db->MSqlDatabase::GetConnectionName(), str,
+                             QString(" <<<< Took %1ms").arg(QString::number(elapsed)),
+                             isSelect()
+                             ? QString(", Returned %1 row(s)").arg(size())
+                             : QString()));
         }
     }
 
@@ -738,9 +761,10 @@ bool MSqlQuery::exec(const QString &query)
 
     LOG(VB_DATABASE, LOG_INFO,
             QString("MSqlQuery::exec(%1) %2%3")
-                    .arg(m_db->MSqlDatabase::GetConnectionName()).arg(query)
-                    .arg(isSelect() ? QString(" <<<< Returns %1 row(s)")
-                                          .arg(size()) : QString()));
+                    .arg(m_db->MSqlDatabase::GetConnectionName(), query,
+                         isSelect()
+                         ? QString(" <<<< Returns %1 row(s)").arg(size())
+                         : QString()));
 
     return result;
 }
@@ -774,8 +798,7 @@ bool MSqlQuery::seekDebug(const char *type, bool result,
         {
             LOG(VB_DATABASE, LOG_DEBUG,
                 QString("MSqlQuery::%1(%2) Result: \"%3\"")
-                .arg(type).arg(m_db->MSqlDatabase::GetConnectionName())
-                .arg(str));
+                .arg(type, m_db->MSqlDatabase::GetConnectionName(), str));
         }
     }
     return result;
@@ -897,10 +920,18 @@ bool MSqlQuery::Reconnect(void)
         return false;
     if (!m_lastPreparedQuery.isEmpty())
     {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
         MSqlBindings tmp = QSqlQuery::boundValues();
         if (!QSqlQuery::prepare(m_lastPreparedQuery))
             return false;
         bindValues(tmp);
+#else
+        QVariantList tmp = QSqlQuery::boundValues();
+        if (!QSqlQuery::prepare(m_lastPreparedQuery))
+            return false;
+	for (int i = 0; i < static_cast<int>(tmp.size()); i++)
+	    QSqlQuery::bindValue(i, tmp.at(i));
+#endif
     }
     return true;
 }

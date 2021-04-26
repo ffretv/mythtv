@@ -165,7 +165,7 @@ void TestEITFixups::printEvent(const DBEventEIT& event)
     }
     if (!event.m_items.isEmpty())
     {
-        printf("Items        %3d\n", event.m_items.count());
+        printf("Items        %3d\n", static_cast<int>(event.m_items.count()));
     }
     printf("Category       %3u\n", event.m_categoryType);
     printf("\n");
@@ -218,7 +218,7 @@ void TestEITFixups::checkCast(const DBEventEIT& event,
                 break;
               default:
                 QFAIL(qPrintable(QString("Unknown person '%1'of type %2")
-                                 .arg(person.m_name).arg(person.GetRole())));
+                                 .arg(person.m_name, person.GetRole())));
                 allCast.removeOne(person.m_name);
                 break;
             }

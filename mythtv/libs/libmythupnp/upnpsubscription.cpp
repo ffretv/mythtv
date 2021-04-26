@@ -10,7 +10,11 @@ QObject::customEvent to receive event notifications for subscribed services.
 
 #include "upnpsubscription.h"
 
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+#include <QStringConverter>
+#else
 #include <QTextCodec>
+#endif
 #include <utility>
 
 #include "mythcorecontext.h"
@@ -52,7 +56,7 @@ UPNPSubscription::UPNPSubscription(const QString &share_path, int port)
         host = addr.toString();
 
     m_callback = QString("http://%1:%2/Subscriptions/event?usn=")
-         .arg(host).arg(QString::number(port));
+        .arg(host, QString::number(port));
 }
 
 UPNPSubscription::~UPNPSubscription()
@@ -71,7 +75,7 @@ std::chrono::seconds UPNPSubscription::Subscribe(const QString &usn, const QUrl 
                                 const QString &path)
 {
     LOG(VB_UPNP, LOG_DEBUG, LOC + QString("Subscribe %1 %2 %3")
-        .arg(usn).arg(url.toString()).arg(path));
+        .arg(usn, url.toString(), path));
 
     // N.B. this is called from the client object's thread. Hence we have to
     // lock until the subscription request has returned, otherwise we may
@@ -181,7 +185,7 @@ bool UPNPSubscription::ProcessRequest(HTTPRequest *pRequest)
         return false;
 
     LOG(VB_UPNP, LOG_DEBUG, LOC + QString("%1\n%2")
-        .arg(pRequest->m_sRawRequest).arg(pRequest->m_sPayload));
+        .arg(pRequest->m_sRawRequest, pRequest->m_sPayload));
 
     if (pRequest->m_sPayload.isEmpty())
         return true;
@@ -280,10 +284,14 @@ bool UPNPSubscription::SendUnsubscribeRequest(const QString &usn,
 
     QByteArray sub;
     QTextStream data(&sub);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     data.setCodec(QTextCodec::codecForName("UTF-8"));
+#else
+    data.setEncoding(QStringConverter::Utf8);
+#endif
     // N.B. Play On needs an extra space between UNSUBSCRIBE and path...
     data << QString("UNSUBSCRIBE  %1 HTTP/1.1\r\n").arg(path);
-    data << QString("HOST: %1:%2\r\n").arg(host).arg(QString::number(port));
+    data << QString("HOST: %1:%2\r\n").arg(host, QString::number(port));
     data << QString("SID: uuid:%1\r\n").arg(uuid);
     data << "\r\n";
     data.flush();
@@ -336,16 +344,20 @@ std::chrono::seconds UPNPSubscription::SendSubscribeRequest(const QString &callb
 
     QByteArray sub;
     QTextStream data(&sub);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     data.setCodec(QTextCodec::codecForName("UTF-8"));
+#else
+    data.setEncoding(QStringConverter::Utf8);
+#endif
     // N.B. Play On needs an extra space between SUBSCRIBE and path...
     data << QString("SUBSCRIBE  %1 HTTP/1.1\r\n").arg(path);
-    data << QString("HOST: %1:%2\r\n").arg(host).arg(QString::number(port));
+    data << QString("HOST: %1:%2\r\n").arg(host, QString::number(port));
 
 
     if (uuidin.isEmpty()) // new subscription
     {
         data << QString("CALLBACK: <%1%2>\r\n")
-            .arg(callback).arg(usn);
+            .arg(callback, usn);
         data << "NT: upnp:event\r\n";
     }
     else // renewal

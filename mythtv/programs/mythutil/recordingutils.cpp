@@ -47,8 +47,8 @@ static QString CreateProgramInfoString(const ProgramInfo &pginfo)
 
     QString timedate = QString("%1 - %2")
         .arg(MythDate::toString(
-                 recstartts, MythDate::kDateTimeFull | MythDate::kSimplify))
-        .arg(MythDate::toString(recendts, MythDate::kTime));
+                 recstartts, MythDate::kDateTimeFull | MythDate::kSimplify),
+             MythDate::toString(recendts, MythDate::kTime));
 
     QString title = pginfo.GetTitle();
 
@@ -57,12 +57,12 @@ static QString CreateProgramInfoString(const ProgramInfo &pginfo)
     if (!pginfo.GetSubtitle().isEmpty())
     {
         extra = QString(" ~ ") + pginfo.GetSubtitle();
-        int maxll = std::max(title.length(), 20);
+        int maxll = std::max(static_cast<int>(title.length()), 20);
         if (extra.length() > maxll)
             extra = extra.left(maxll - 3) + "...";
     }
 
-    return QString("%1%2 - %3").arg(title).arg(extra).arg(timedate);
+    return QString("%1%2 - %3").arg(title, extra, timedate);
 }
 
 static int CheckRecordings(const MythUtilCommandLineParser &cmdline)

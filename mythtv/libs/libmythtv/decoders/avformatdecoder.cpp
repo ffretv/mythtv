@@ -674,8 +674,8 @@ void AvFormatDecoder::SeekReset(long long newKey, uint skipFrames,
     LOG(VB_PLAYBACK, LOG_INFO, LOC +
         QString("SeekReset(%1, %2, %3 flush, %4 discard)")
             .arg(newKey).arg(skipFrames)
-            .arg((doflush) ? "do" : "don't")
-            .arg((discardFrames) ? "do" : "don't"));
+            .arg((doflush) ? "do" : "don't",
+                 (discardFrames) ? "do" : "don't"));
 
     DecoderBase::SeekReset(newKey, skipFrames, doflush, discardFrames);
 
@@ -1456,8 +1456,8 @@ void AvFormatDecoder::InitVideoCodec(AVStream *stream, AVCodecContext *enc,
 {
     LOG(VB_PLAYBACK, LOG_INFO, LOC +
         QString("InitVideoCodec ID:%1 Type:%2 Size:%3x%4")
-            .arg(ff_codec_id_string(enc->codec_id))
-            .arg(ff_codec_type_string(enc->codec_type))
+            .arg(ff_codec_id_string(enc->codec_id),
+                 ff_codec_type_string(enc->codec_type))
             .arg(enc->width).arg(enc->height));
 
     if (m_ringBuffer && m_ringBuffer->IsDVD())
@@ -1671,6 +1671,7 @@ void AvFormatDecoder::ScanATSCCaptionStreams(int av_index)
 
     const ProgramMapTable pmt(PSIPTable(m_ic->cur_pmt_sect));
 
+    bool video_found = false;
     uint i = 0;
     for (i = 0; i < pmt.StreamCount(); i++)
     {
@@ -1678,10 +1679,12 @@ void AvFormatDecoder::ScanATSCCaptionStreams(int av_index)
         // so "dvb" is the safest choice for system info type, since this
         // will ignore other uses of the same stream id in DVB countries.
         if (pmt.IsVideo(i, "dvb"))
+        {
+            video_found = true;
             break;
+        }
     }
-
-    if (!pmt.IsVideo(i, "dvb"))
+    if (!video_found)
         return;
 
     desc_list_t desc_list = MPEGDescriptor::ParseOnlyInclude(
@@ -1699,6 +1702,9 @@ void AvFormatDecoder::ScanATSCCaptionStreams(int av_index)
         const CaptionServiceDescriptor csd(desc);
         if (!csd.IsValid())
             continue;
+
+        LOG(VB_VBI, LOG_DEBUG, LOC + csd.toString());
+
         for (uint k = 0; k < csd.ServicesCount(); k++)
         {
             int lang = csd.CanonicalLanguageKey(k);
@@ -1835,9 +1841,11 @@ void AvFormatDecoder::ScanTeletextCaptions(int av_index)
                     LOG(VB_PLAYBACK, LOG_INFO, LOC +
                         QString("Teletext stream #%1 (%2) is in the %3 language"
                                 " on page %4 %5.")
-                            .arg(k).arg((type == 2) ? "Caption" : "Menu")
-                            .arg(iso639_key_toName(language))
-                            .arg(magazine).arg(pagenum));
+                            .arg(QString::number(k),
+                                 (type == 2) ? "Caption" : "Menu",
+                                 iso639_key_toName(language),
+                                 QString::number(magazine),
+                                 QString::number(pagenum)));
                 }
             }
         }
@@ -1979,8 +1987,8 @@ int AvFormatDecoder::ScanStreams(bool novideo)
         LOG(VB_PLAYBACK, LOG_INFO, LOC +
             QString("Stream #%1: ID: 0x%2 Codec ID: %3 Type: %4 Bitrate: %5")
                 .arg(strm).arg(static_cast<uint64_t>(m_ic->streams[strm]->id), 0, 16)
-                .arg(ff_codec_id_string(par->codec_id))
-                .arg(codectype).arg(par->bit_rate));
+                .arg(ff_codec_id_string(par->codec_id),
+                     codectype).arg(par->bit_rate));
 
         switch (par->codec_type)
         {
@@ -2040,8 +2048,8 @@ int AvFormatDecoder::ScanStreams(bool novideo)
                         QString("Warning, audio codec 0x%1 id(%2) "
                                 "type (%3) already open, leaving it alone.")
                             .arg(reinterpret_cast<unsigned long long>(enc), 0, 16)
-                            .arg(ff_codec_id_string(enc->codec_id))
-                            .arg(ff_codec_type_string(enc->codec_type)));
+                            .arg(ff_codec_id_string(enc->codec_id),
+                                 ff_codec_type_string(enc->codec_type)));
                 }
                 LOG(VB_GENERAL, LOG_INFO, LOC +
                     QString("codec %1 has %2 channels")
@@ -2171,8 +2179,8 @@ int AvFormatDecoder::ScanStreams(bool novideo)
         {
             LOG(VB_PLAYBACK, LOG_INFO, LOC +
                 QString("Already opened codec not matching (%1 vs %2). Reopening")
-                .arg(ff_codec_id_string(enc->codec_id))
-                .arg(ff_codec_id_string(enc->codec->id)));
+                .arg(ff_codec_id_string(enc->codec_id),
+                     ff_codec_id_string(enc->codec->id)));
             m_codecMap.FreeCodecContext(m_ic->streams[strm]);
             enc = m_codecMap.GetCodecContext(m_ic->streams[strm]);
         }
@@ -2305,9 +2313,10 @@ int AvFormatDecoder::ScanStreams(bool novideo)
             LOG(VB_PLAYBACK, LOG_INFO, LOC +
                 QString("Selected track #%1: ID: 0x%2 Codec ID: %3 Profile: %4 Type: %5 Bitrate: %6")
                     .arg(selTrack).arg(static_cast<uint64_t>(stream->id), 0, 16)
-                    .arg(ff_codec_id_string(enc->codec_id))
-                    .arg(avcodec_profile_name(enc->codec_id, enc->profile))
-                    .arg(codectype).arg(enc->bit_rate));
+                    .arg(ff_codec_id_string(enc->codec_id),
+                         avcodec_profile_name(enc->codec_id, enc->profile),
+                         codectype,
+                         QString::number(enc->bit_rate)));
 
             // If ScanStreams has been called on a stream change triggered by a
             // decoder error - because the decoder does not handle resolution
@@ -2524,17 +2533,17 @@ bool AvFormatDecoder::OpenAVCodec(AVCodecContext *avctx, const AVCodec *codec)
         LOG(VB_GENERAL, LOG_ERR, LOC +
             QString("Could not open codec 0x%1, id(%2) type(%3) "
                     "ignoring. reason %4").arg((uint64_t)avctx,0,16)
-            .arg(ff_codec_id_string(avctx->codec_id))
-            .arg(ff_codec_type_string(avctx->codec_type))
-            .arg(av_make_error_stdstring(error, ret)));
+            .arg(ff_codec_id_string(avctx->codec_id),
+                 ff_codec_type_string(avctx->codec_type),
+                 av_make_error_stdstring(error, ret)));
         return false;
     }
 
     LOG(VB_GENERAL, LOG_INFO, LOC +
         QString("Opened codec 0x%1, id(%2) type(%3)")
         .arg((uint64_t)avctx,0,16)
-        .arg(ff_codec_id_string(avctx->codec_id))
-        .arg(ff_codec_type_string(avctx->codec_type)));
+        .arg(ff_codec_id_string(avctx->codec_id),
+             ff_codec_type_string(avctx->codec_type)));
     return true;
 }
 
@@ -2853,7 +2862,7 @@ void AvFormatDecoder::DecodeCCx08(const uint8_t *buf, uint buf_size, bool scte)
 
     bool had_608 = false;
     bool had_708 = false;
-    for (uint cur = 0; cur + 3 < buf_size; cur += 3)
+    for (uint cur = 0; cur + 2 < buf_size; cur += 3)
     {
         uint cc_code  = buf[cur];
         bool cc_valid = (cc_code & 0x04) != 0U;
@@ -4140,8 +4149,9 @@ QString AvFormatDecoder::GetTrackDesc(uint type, uint TrackNo)
     if (kTrackTypeSubtitle == type)
     {
         return QObject::tr("Subtitle") + QString(" %1: %2%3")
-            .arg(TrackNo + 1).arg(iso639_key_toName(lang_key))
-            .arg(forcedString);
+            .arg(QString::number(TrackNo + 1),
+                 iso639_key_toName(lang_key),
+                 forcedString);
     }
     if (forced && kTrackTypeRawText == type)
         return DecoderBase::GetTrackDesc(type, TrackNo) + forcedString;
@@ -4477,7 +4487,7 @@ int AvFormatDecoder::AutoSelectAudioTrack(void)
 
         // could not select track based on user preferences (language)
         // try to select the default track
-        if (selTrack < 0 && numStreams)
+        if (selTrack < 0)
         {
             LOG(VB_AUDIO, LOG_INFO, LOC + "Trying to select default track");
             for (size_t i = 0; i < atracks.size(); i++) {
@@ -5010,8 +5020,8 @@ bool AvFormatDecoder::GetFrame(DecodeType decodetype, bool &Retry)
                 LOG(VB_PLAYBACK, LOG_ERR, LOC +
                     QString("No codec for stream index %1, type(%2) id(%3:%4)")
                         .arg(pkt->stream_index)
-                        .arg(ff_codec_type_string(codec_type))
-                        .arg(ff_codec_id_string(curstream->codecpar->codec_id))
+                    .arg(ff_codec_type_string(codec_type),
+                         ff_codec_id_string(curstream->codecpar->codec_id))
                         .arg(curstream->codecpar->codec_id));
                 // Process Stream Change in case we have no audio
                 if (codec_type == AVMEDIA_TYPE_AUDIO && !m_audio->HasAudioIn())
@@ -5070,8 +5080,8 @@ bool AvFormatDecoder::GetFrame(DecodeType decodetype, bool &Retry)
             {
                 LOG(VB_GENERAL, LOG_ERR, LOC +
                     QString("Decoding - id(%1) type(%2)")
-                        .arg(ff_codec_id_string(ctx->codec_id))
-                        .arg(ff_codec_type_string(ctx->codec_type)));
+                        .arg(ff_codec_id_string(ctx->codec_id),
+                             ff_codec_type_string(ctx->codec_type)));
                 have_err = true;
                 break;
             }
@@ -5318,7 +5328,7 @@ bool AvFormatDecoder::SetupAudioStream(void)
 
     LOG(VB_AUDIO, LOG_INFO, LOC + "Audio format changed " +
         QString("\n\t\t\tfrom %1 to %2")
-            .arg(old_in.toString()).arg(m_audioOut.toString()));
+            .arg(old_in.toString(), m_audioOut.toString()));
 
     m_audio->SetAudioParams(m_audioOut.format, ctx->channels,
                             requested_channels,

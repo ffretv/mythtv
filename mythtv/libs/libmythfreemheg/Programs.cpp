@@ -212,7 +212,7 @@ void MHResidentProgram::CallProgram(bool fIsFork, const MHObjectRef &success, co
 
                 for (int i = 0; i < format.Size(); i++)
                 {
-                    unsigned char ch = format.GetAt(i);
+                    char ch = format.GetAt(i);
                     QString buffer {};
 
                     if (ch == '%')
@@ -826,7 +826,7 @@ void MHResidentProgram::CallProgram(bool fIsFork, const MHObjectRef &success, co
                 QString str2 = QString::fromUtf8((const char *)string.Bytes(), string.Size());
                 // TODO
                 MHLOG(MHLogNotifications, QString("NOTE SetHybridFileSystem %1=%2")
-                    .arg(str).arg(str2));
+                    .arg(str, str2));
                 SetSuccessFlag(success, false, engine);
             }
             else SetSuccessFlag(success, false, engine);

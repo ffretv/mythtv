@@ -29,6 +29,9 @@
 #include <QString>
 #include <QStringList>
 #include <QtAlgorithms>
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+#include <QStringConverter>
+#endif
 #include <QUrl>
 
 // C++
@@ -827,7 +830,7 @@ class HLSStream
             // not even size, pad with front 0
             line.insert(2, QLatin1String("0"));
         }
-        int padding = max(0, AES_BLOCK_SIZE - (line.size() - 2));
+        int padding = max(0, AES_BLOCK_SIZE - (static_cast<int>(line.size()) - 2));
         QByteArray ba = QByteArray(padding, 0x0);
         ba.append(QByteArray::fromHex(QByteArray(line.toLatin1().constData() + 2)));
         std::copy(ba.cbegin(), ba.cend(), m_aesIv.begin());
@@ -1458,7 +1461,7 @@ private:
                         .arg(p->Duration().count()).arg(segment->Duration().count()));
                     LOG(VB_PLAYBACK, LOG_WARNING, LOC +
                         QString("-     file: new=%1 old=%2")
-                        .arg(p->Url()).arg(segment->Url()));
+                        .arg(p->Url(), segment->Url()));
 
                     /* Resetting content */
                     *segment = *p;
@@ -1775,7 +1778,7 @@ int HLSRingBuffer::ParseDecimalValue(const QString &line, int &target)
     while (++i < line.size() && line[i].isNumber());
     if (i == p + 1)
         return RET_ERROR;
-    target = line.midRef(p+1, i - p - 1).toInt();
+    target = line.mid(p+1, i - p - 1).toInt();
     return RET_OK;
 }
 
@@ -2111,7 +2114,12 @@ int HLSRingBuffer::ParseM3U8(const QByteArray *buffer, StreamsList *streams)
     {
         streams = &m_streams;
     }
-    QTextStream stream(*buffer); stream.setCodec("UTF-8");
+    QTextStream stream(*buffer);
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+    stream.setCodec("UTF-8");
+#else
+    stream.setEncoding(QStringConverter::Utf8);
+#endif
 
     QString line = stream.readLine();
     if (line.isNull())
@@ -2523,7 +2531,7 @@ bool HLSRingBuffer::OpenFile(const QString &lfilename, std::chrono::milliseconds
     if (m_filename != finalURL)
     {
         LOG(VB_PLAYBACK, LOG_INFO, LOC +
-            QString("Redirected %1 -> %2 ").arg(m_filename).arg(finalURL));
+            QString("Redirected %1 -> %2 ").arg(m_filename, finalURL));
         m_filename = finalURL;
     }
     if (!IsHTTPLiveStreaming(&buffer))

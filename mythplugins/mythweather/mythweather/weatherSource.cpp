@@ -4,7 +4,11 @@
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
-#include <QTextCodec>                                                          
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+#include <QTextCodec>
+#else
+#include <QStringConverter>
+#endif
 #include <QApplication>
 
 // MythTV headers
@@ -24,7 +28,7 @@ QStringList WeatherSource::ProbeTypes(const QString& workingDirectory,
 {
     QStringList arguments("-t");
     const QString loc = QString("WeatherSource::ProbeTypes(%1 %2): ")
-        .arg(program).arg(arguments.join(" "));
+        .arg(program, arguments.join(" "));
     QStringList types;
 
     uint flags = kMSRunShell | kMSStdOut | 
@@ -65,7 +69,7 @@ bool WeatherSource::ProbeTimeouts(const QString&  workingDirectory,
 {
     QStringList arguments("-T");
     const QString loc = QString("WeatherSource::ProbeTimeouts(%1 %2): ")
-        .arg(program).arg(arguments.join(" "));
+        .arg(program, arguments.join(" "));
 
     updateTimeout = DEFAULT_UPDATE_TIMEOUT;
     scriptTimeout = DEFAULT_SCRIPT_TIMEOUT;
@@ -131,7 +135,7 @@ bool WeatherSource::ProbeInfo(ScriptInfo &info)
     QStringList arguments("-v");
 
     const QString loc = QString("WeatherSource::ProbeInfo(%1 %2): ")
-        .arg(info.program).arg(arguments.join(" "));
+        .arg(info.program, arguments.join(" "));
 
     uint flags = kMSRunShell | kMSStdOut | 
                  kMSDontDisableDrawing | kMSDontBlockInputDevs;
@@ -379,7 +383,7 @@ QStringList WeatherSource::getLocationList(const QString &str)
     args << str;
 
     const QString loc = QString("WeatherSource::getLocationList(%1 %2): ")
-        .arg(program).arg(args.join(" "));
+        .arg(program, args.join(" "));
 
     uint flags = kMSRunShell | kMSStdOut | 
                  kMSDontDisableDrawing | kMSDontBlockInputDevs;
@@ -396,20 +400,16 @@ QStringList WeatherSource::getLocationList(const QString &str)
     QStringList locs;
     QByteArray result = ms.ReadAll();
     QTextStream text(result);
-                                                                                
-    QTextCodec *codec = QTextCodec::codecForName("UTF-8");                     
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+    text.setCodec("UTF-8");
+#else
+    text.setEncoding(QStringConverter::Utf8);
+#endif
     while (!text.atEnd())
     {
-        QString tmp = text.readLine();
-
-        while (tmp.endsWith('\n') || tmp.endsWith('\r'))
-            tmp.chop(1);
-
+        QString tmp = text.readLine().trimmed();
         if (!tmp.isEmpty())
-         {                                                                      
-             QString loc_string = codec->toUnicode(tmp.toUtf8());
-             locs << loc_string;
-         }
+            locs << tmp;
     }
 
     return locs;
@@ -444,7 +444,7 @@ void WeatherSource::startUpdate(bool forceUpdate)
             {
                 QString locale_file(m_locale);
                 locale_file.replace("/", "-");
-                m_cachefile = QString("%1/cache_%2").arg(m_dir).arg(locale_file);
+                m_cachefile = QString("%1/cache_%2").arg(m_dir, locale_file);
             }
             QFile cache(m_cachefile);
             if (cache.exists() && cache.open( QIODevice::ReadOnly ))
@@ -527,7 +527,7 @@ void WeatherSource::processExit(uint status)
     {
         QString locale_file(m_locale);
         locale_file.replace("/", "-");
-        m_cachefile = QString("%1/cache_%2").arg(m_dir).arg(locale_file);
+        m_cachefile = QString("%1/cache_%2").arg(m_dir, locale_file);
     }
     QFile cache(m_cachefile);
     if (cache.open( QIODevice::WriteOnly ))
@@ -568,8 +568,7 @@ void WeatherSource::processExit(void)
 
 void WeatherSource::processData()
 {
-    QTextCodec *codec = QTextCodec::codecForName("UTF-8");
-    QString unicode_buffer = codec->toUnicode(m_buffer);
+    QString unicode_buffer = QString::fromUtf8(m_buffer);
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     QStringList data = unicode_buffer.split('\n', QString::SkipEmptyParts);
 #else

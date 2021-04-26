@@ -273,14 +273,14 @@ void MythVisualCirclesVulkan::DrawPriv(MythPainter* /*Painter*/, QPaintDevice* /
     m_vulkanFuncs->vkCmdBindDescriptorSets(currentcmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            layout, 0, 1, &m_projectionDescriptor, 0, nullptr);
 
-    float range = static_cast<float>(m_range);
+    auto range = static_cast<float>(m_range);
     float red = 0.0F;
     float green = 0.8F;
     int count = m_scale.range();
     float incr = 0.8F / count;
     float rad = range;
 
-    for (int i = 0; i < count; i++, rad += range, red += incr, green -= incr)
+    for (int i = 0; i < count; i++)
     {
         float mag = static_cast<float>(qAbs((m_magnitudes[i] + m_magnitudes[i + count]) / 2.0));
         if (mag > 1.0F)
@@ -296,8 +296,10 @@ void MythVisualCirclesVulkan::DrawPriv(MythPainter* /*Painter*/, QPaintDevice* /
             // Draw
             m_vulkanFuncs->vkCmdDraw(currentcmdbuf, 4, 1, 0, 0);
         }
+        rad += range;
+        red += incr;
+        green -= incr;
     }
-
 }
 
 MythRenderVulkan* MythVisualCirclesVulkan::InitialiseVulkan(const QRect Area)

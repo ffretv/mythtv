@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QHash>
 #include <QDir>
+#include <QRegularExpression>
 
 #include "mythdb.h"
 #include "mythdbcon.h"
@@ -165,7 +166,22 @@ QString MythDB::GetError(const QString &where, const MSqlQuery &query)
 
     str += "Query was:\n";
     str += query.executedQuery() + '\n';
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     QString tmp = toCommaList(query.boundValues());
+#else
+    QVariantList numberedBindings = query.boundValues();
+    QMap<QString, QVariant> namedBindings;
+    static const QRegularExpression placeholders { "(:\\w+)" };
+    auto iter = placeholders.globalMatch(str);
+    while (iter.hasNext())
+    {
+        auto match = iter.next();
+        namedBindings[match.captured()] = numberedBindings.isEmpty()
+	    ? QString("INVALID")
+	    : numberedBindings.takeFirst();
+    }
+    QString tmp = toCommaList(namedBindings);
+#endif
     if (!tmp.isEmpty())
     {
         str += "Bindings were:\n";
@@ -190,9 +206,9 @@ QString MythDB::DBErrorMessage(const QSqlError& err)
                    "Database error was:\n"
                    "%4\n")
         .arg(err.type())
-        .arg(err.nativeErrorCode())
-        .arg(err.driverText())
-        .arg(err.databaseText());
+        .arg(err.nativeErrorCode(),
+             err.driverText(),
+             err.databaseText());
 }
 
 DatabaseParams MythDB::GetDatabaseParams(void) const
@@ -520,7 +536,7 @@ bool MythDB::GetSettings(QMap<QString,QString> &_key_value_pairs)
                 "WHERE (hostname = '%1' OR hostname IS NULL) AND "
                 "      value IN (%2) "
                 "ORDER BY hostname DESC")
-            .arg(d->m_localhostname).arg(keylist)))
+            .arg(d->m_localhostname, keylist)))
     {
         if (!d->m_suppressDBMessages)
             DBError("GetSettings", query);

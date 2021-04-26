@@ -178,7 +178,7 @@ bool getMemStats(int &totalMB, int &freeMB, int &totalVM, int &freeVM)
 loadArray getLoadAvgs (void)
 {
 #if !defined(_WIN32) && !defined(Q_OS_ANDROID)
-    loadArray loads;
+    loadArray loads {};
     if (getloadavg(loads.data(), loads.size()) != -1)
         return loads;
 #endif
@@ -265,9 +265,9 @@ bool ping(const QString &host, std::chrono::milliseconds timeout)
     QString pingcmd =
         addr.protocol() == QAbstractSocket::IPv6Protocol ? "ping6" : "ping";
     QString cmd = QString("%1 %2 %3 -c 1  %4  >/dev/null 2>&1")
-                  .arg(pingcmd).arg(timeoutparam)
-                  .arg(duration_cast<std::chrono::seconds>(timeout).count())
-                  .arg(host);
+                  .arg(pingcmd, timeoutparam,
+                       QString::number(duration_cast<std::chrono::seconds>(timeout).count()),
+                       host);
 
     return myth_system(cmd, kMSDontBlockInputDevs | kMSDontDisableDrawing |
                          kMSProcessEvents) == GENERIC_EXIT_OK;
@@ -575,7 +575,7 @@ bool IsMACAddress(const QString& MAC)
             LOG(VB_NETWORK, LOG_ERR,
                 QString("IsMACAddress(%1) = false, unable to "
                         "convert part '%2' to integer.")
-                    .arg(MAC).arg(tokens[y]));
+                    .arg(MAC, tokens[y]));
             return false;
         }
 
@@ -943,7 +943,7 @@ void setHttpProxy(void)
         if (!p.user().isEmpty())
         {
             url = "http://%1:%2@%3:%4",
-            url = url.arg(p.user()).arg(p.password());
+            url = url.arg(p.user(), p.password());
         }
         else
         {
@@ -1110,15 +1110,9 @@ int naturalCompare(const QString &_a, const QString &_b, Qt::CaseSensitivity cas
         }
 
         // compare these sequences
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-        const QStringRef& subA(a.midRef(begSeqA - a.unicode(), currA - begSeqA));
-        const QStringRef& subB(b.midRef(begSeqB - b.unicode(), currB - begSeqB));
-        const int cmp = QStringRef::localeAwareCompare(subA, subB);
-#else
-        const QString& subA(a.sliced(begSeqA - a.unicode(), currA - begSeqA));
-        const QString& subB(b.sliced(begSeqB - b.unicode(), currB - begSeqB));
+        const QString& subA(a.mid(begSeqA - a.unicode(), currA - begSeqA));
+        const QString& subB(b.mid(begSeqB - b.unicode(), currB - begSeqB));
         const int cmp = QString::localeAwareCompare(subA, subB);
-#endif
 
         if (cmp != 0)
         {

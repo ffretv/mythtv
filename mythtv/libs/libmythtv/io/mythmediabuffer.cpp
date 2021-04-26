@@ -473,8 +473,8 @@ long long MythMediaBuffer::Seek(long long Position, int Whence, bool HasLock)
 {
     LOG(VB_FILE, LOG_INFO, LOC + QString("Seek: Position:%1 Type: %2 Locked: %3)")
         .arg(Position)
-        .arg((SEEK_SET == Whence) ? "SEEK_SET" : ((SEEK_CUR == Whence) ? "SEEK_CUR" : "SEEK_END"))
-        .arg(HasLock?"locked":"unlocked"));
+        .arg((SEEK_SET == Whence) ? "SEEK_SET" : ((SEEK_CUR == Whence) ? "SEEK_CUR" : "SEEK_END"),
+             HasLock?"locked":"unlocked"));
 
     if (!HasLock)
         m_rwLock.lockForWrite();
@@ -1848,7 +1848,11 @@ MythBDBuffer  *MythMediaBuffer::BD(void)
 
 void MythMediaBuffer::AVFormatInitNetwork(void)
 {
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     static QMutex s_avnetworkLock(QMutex::Recursive);
+#else
+    static QRecursiveMutex s_avnetworkLock;
+#endif
     static bool s_avnetworkInitialised = false;
     QMutexLocker lock(&s_avnetworkLock);
     if (!s_avnetworkInitialised)

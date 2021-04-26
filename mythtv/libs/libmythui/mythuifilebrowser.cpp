@@ -411,13 +411,15 @@ void MythUIFileBrowser::homePressed()
 void MythUIFileBrowser::OKPressed()
 {
     MythUIButtonListItem *item = m_fileList->GetItemCurrent();
-        auto finfo = item->GetData().value<MFileInfo>();
 
     if (m_retObject)
     {
         QString selectedPath = m_locationEdit->GetText();
+        QVariant vData;
+        if (item != nullptr)
+            vData = item->GetData();
         auto *dce = new DialogCompletionEvent(m_id, 0, selectedPath,
-                                              item->GetData());
+                                              vData);
         QCoreApplication::postEvent(m_retObject, dce);
     }
 
@@ -448,8 +450,7 @@ void MythUIFileBrowser::updateRemoteFileList()
     if (!m_baseDirectory.endsWith("/"))
         m_baseDirectory.append("/");
 
-    QString dirURL = QString("%1%2").arg(m_baseDirectory)
-                     .arg(m_subDirectory);
+    QString dirURL = QString("%1%2").arg(m_baseDirectory, m_subDirectory);
 
     if (!GetRemoteFileList(m_baseDirectory, sgdir, sgdirlist))
     {
@@ -470,7 +471,7 @@ void MythUIFileBrowser::updateRemoteFileList()
     {
         LOG(VB_GENERAL, LOG_ERR,
             QString("GetRemoteFileList failed for '%1' in '%2' SG dir")
-            .arg(dirURL).arg(m_storageGroupDir));
+            .arg(dirURL, m_storageGroupDir));
         return;
     }
 
@@ -540,13 +541,12 @@ void MythUIFileBrowser::updateRemoteFileList()
             dataName = m_baseDirectory;
         else if (m_subDirectory.isEmpty())
         {
-            dataName = QString("%1%2").arg(m_baseDirectory)
-                       .arg(displayName);
+            dataName = QString("%1%2").arg(m_baseDirectory, displayName);
         }
         else
         {
-            dataName = QString("%1%2/%3").arg(m_baseDirectory)
-                       .arg(m_subDirectory).arg(displayName);
+            dataName = QString("%1%2/%3")
+                       .arg(m_baseDirectory, m_subDirectory, displayName);
         }
 
         MFileInfo finfo(dataName, m_storageGroupDir);

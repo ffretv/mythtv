@@ -858,7 +858,7 @@ bool GuideGrid::gestureEvent(MythGestureEvent *event)
     }
 
     LOG(VB_GENERAL, LOG_INFO, LOC + QString("Guide Gesture event %1")
-        .arg((QString)event->GetGesture()));
+        .arg(QString::number(event->GetGesture())));
     switch (event->GetGesture())
     {
         case MythGestureEvent::Click:
@@ -2542,8 +2542,8 @@ void GuideGrid::deleteRule()
         return;
     }
 
-    QString message = tr("Delete '%1' %2 rule?").arg(record->m_title)
-        .arg(toString(pginfo->GetRecordingRuleType()));
+    QString message = tr("Delete '%1' %2 rule?")
+        .arg(record->m_title, toString(pginfo->GetRecordingRuleType()));
 
     MythScreenStack *popupStack = GetMythMainWindow()->GetStack("popup stack");
 

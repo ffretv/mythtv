@@ -11,7 +11,11 @@
 
 #define LOC QString("Power: ")
 
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
 QMutex MythPower::s_lock(QMutex::Recursive);
+#else
+QRecursiveMutex MythPower::s_lock;
+#endif
 
 /*! \class MythPower
  *
@@ -276,7 +280,7 @@ bool MythPower::ScheduleFeature(enum Feature Type, std::chrono::seconds Delay)
     {
         LOG(VB_GENERAL, LOG_ERR, LOC +
             QString("Ignoring %1 request: %2 pending in %3 seconds")
-            .arg(FeatureToString(Type)).arg(FeatureToString(m_scheduledFeature))
+            .arg(FeatureToString(Type), FeatureToString(m_scheduledFeature))
             .arg(m_featureTimer.remainingTime() / 1000));
         return false;
     }
@@ -307,8 +311,8 @@ void MythPower::FeatureHappening(Feature Spontaneous)
 
     m_sleepTime = QDateTime::currentDateTime();
     LOG(VB_GENERAL, LOG_INFO, LOC + QString("About to: %1 %2")
-        .arg(FeatureToString(m_scheduledFeature))
-        .arg(m_isSpontaneous ? QString("(System notification)") : ""));
+        .arg(FeatureToString(m_scheduledFeature),
+             m_isSpontaneous ? QString("(System notification)") : ""));
 
     switch (m_scheduledFeature)
     {

@@ -5,7 +5,12 @@
 
 #define LOC QString("DRMPRIMECtx: ")
 
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
 QMutex MythDRMPRIMEContext::s_drmPrimeLock(QMutex::Recursive);
+#else
+QRecursiveMutex MythDRMPRIMEContext::s_drmPrimeLock;
+#endif
+
 QStringList MythDRMPRIMEContext::s_drmPrimeDecoders;
 
 /*! \class MythDRMPRIMEContext
@@ -239,8 +244,8 @@ bool MythDRMPRIMEContext::HavePrimeDecoders(bool Reinit /*=false*/, AVCodecID Co
         if (debugcodecs.isEmpty())
             debugcodecs.append("None");
         LOG(VB_GENERAL, LOG_INFO, LOC + QString("DRM PRIME codecs supported: %1 %2")
-            .arg(debugcodecs.join(","))
-            .arg(s_drmPrimeDecoders.isEmpty() ? "" : QString("using: %1").arg(s_drmPrimeDecoders.join(","))));
+            .arg(debugcodecs.join(","),
+                 s_drmPrimeDecoders.isEmpty() ? "" : QString("using: %1").arg(s_drmPrimeDecoders.join(","))));
     }
 
     if (!Codec)

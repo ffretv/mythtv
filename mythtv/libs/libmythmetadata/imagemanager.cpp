@@ -166,7 +166,7 @@ int DeviceManager::OpenDevice(const QString &name, const QString &mount,
     if (id == DEVICE_INVALID)
     {
         state = "New";
-        id = m_devices.isEmpty() ? 0 : (m_devices.constEnd() - 1).key() + 1;
+        id = m_devices.isEmpty() ? 0 : m_devices.lastKey() + 1;
         m_devices.insert(id, new Device(name, mount, media, dir));
     }
     else if (m_devices.value(id))
@@ -1052,7 +1052,7 @@ void ImageDb<FS>::GetDescendantCount(int id, bool all, int &dirs,
                           "       SUM(type =  :PIC)  AS Pics, "
                           "       SUM(type =  :VID)  AS Vids, "
                           "       SUM(size / 1024) "
-                          "FROM %2 %1;").arg(whereClause).arg(m_table));
+                          "FROM %2 %1;").arg(whereClause, m_table));
 
     query.bindValue(":FLDR", kDirectory);
     query.bindValue(":PIC",  kImageFile);
@@ -1465,7 +1465,7 @@ QStringList ImageHandler<DBFS>::HandleDbMove(const QString &ids,
     }
     HandleScanRequest("START");
 
-    RESULT_OK(QString("Moved %1 from %2 -> %3").arg(ids).arg(srcPath, destPath))
+    RESULT_OK(QString("Moved %1 from %2 -> %3").arg(ids, srcPath, destPath))
 }
 
 
@@ -1725,7 +1725,11 @@ QStringList ImageHandler<DBFS>::HandleCreateThumbnails
 template <class DBFS>
 void ImageHandler<DBFS>::RemoveFiles(ImageList &images) const
 {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     QMutableVectorIterator<ImagePtr> it(images);
+#else
+    QMutableListIterator<ImagePtr> it(images);
+#endif
     it.toBack();
     while (it.hasPrevious())
     {

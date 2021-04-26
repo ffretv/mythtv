@@ -17,7 +17,11 @@
 
 MythRAOPDevice *MythRAOPDevice::gMythRAOPDevice = nullptr;
 MThread        *MythRAOPDevice::gMythRAOPDeviceThread = nullptr;
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
 QMutex         *MythRAOPDevice::gMythRAOPDeviceMutex = new QMutex(QMutex::Recursive);
+#else
+QRecursiveMutex *MythRAOPDevice::gMythRAOPDeviceMutex = new QRecursiveMutex();
+#endif
 
 #define LOC QString("RAOP Device: ")
 
@@ -85,7 +89,11 @@ void MythRAOPDevice::Cleanup(void)
 }
 
 MythRAOPDevice::MythRAOPDevice()
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     : m_lock(new QMutex(QMutex::Recursive))
+#else
+    : m_lock(new QRecursiveMutex())
+#endif
 {
     m_hardwareId = QByteArray::fromHex(AirPlayHardwareId().toLatin1());
 }
@@ -193,7 +201,7 @@ bool MythRAOPDevice::RegisterForBonjour(void)
     txt.append(11); txt.append("am=MythTV,1");
 
     LOG(VB_GENERAL, LOG_INFO, QString("Registering service %1.%2 port %3 TXT %4")
-        .arg(QString(name)).arg(QString(type)).arg(m_setupPort).arg(QString(txt)));
+        .arg(QString(name), QString(type), QString::number(m_setupPort), QString(txt)));
     return m_bonjour->Register(m_setupPort, type, name, txt);
 }
 

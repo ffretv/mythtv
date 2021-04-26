@@ -273,7 +273,11 @@ const V4L2Profiles& MythV4L2M2MContext::GetStandardProfiles()
         { V4L2_PIX_FMT_HEVC,        MythCodecContext::HEVC  }
     }};
 
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     static QMutex lock(QMutex::Recursive);
+#else
+    static QRecursiveMutex lock;
+#endif
     static bool s_initialised = false;
     static V4L2Profiles s_profiles;
 
@@ -306,7 +310,7 @@ V4L2Profiles MythV4L2M2MContext::GetProfiles(const std::vector<V4L2Mapping>& Pro
         V4L2util v4l2dev(root + device);
         uint32_t caps = v4l2dev.GetCapabilities();
         LOG(VB_PLAYBACK, LOG_INFO, LOC + QString("Device: %1 Driver: '%2' Capabilities: 0x%3")
-            .arg(v4l2dev.GetDeviceName()).arg(v4l2dev.GetDriverName()).arg(caps, 0, 16));
+            .arg(v4l2dev.GetDeviceName(), v4l2dev.GetDriverName(), QString::number(caps, 16)));
 
         // check capture and output support
         // these mimic the device checks in v4l2_m2m.c
@@ -381,7 +385,7 @@ V4L2Profiles MythV4L2M2MContext::GetProfiles(const std::vector<V4L2Mapping>& Pro
                     if (pixformats.isEmpty())
                         pixformats.append("None");
                     LOG(VB_PLAYBACK, LOG_INFO, LOC + QString("Codec '%1' has no supported formats (Supported: %2)")
-                        .arg(MythCodecContext::GetProfileDescription(mythprofile, dummy)).arg(pixformats.join((","))));
+                        .arg(MythCodecContext::GetProfileDescription(mythprofile, dummy), pixformats.join((","))));
                 }
             }
         }
@@ -414,7 +418,11 @@ void MythV4L2M2MContext::GetDecoderList(QStringList &Decoders)
 
 bool MythV4L2M2MContext::HaveV4L2Codecs(bool Reinit /*=false*/)
 {
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     static QMutex lock(QMutex::Recursive);
+#else
+    static QRecursiveMutex lock;
+#endif
     QMutexLocker locker(&lock);
     static bool s_checked = false;
     static bool s_available = false;
@@ -472,7 +480,11 @@ const V4L2Profiles& MythV4L2M2MContext::GetRequestProfiles()
         { V4L2_PIX_FMT_HEVC_SLICE,  MythCodecContext::HEVC  }
     }};
 
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
     static QMutex lock(QMutex::Recursive);
+#else
+    static QRecursiveMutex lock;
+#endif
     static bool s_initialised = false;
     static V4L2Profiles s_profiles;
 

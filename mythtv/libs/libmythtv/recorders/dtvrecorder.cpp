@@ -709,8 +709,8 @@ void DTVRecorder::UpdateFramesWritten(void)
             QString("count=%1 m_frameRate=%2 tick_frameRate=%3 "
                     "tick_cnt=%4 tick_base=%5 _total_dur=%6")
             .arg(m_framesWrittenCount)
-            .arg(m_frameRate.toString())
-            .arg(m_tdTickFramerate.toString())
+            .arg(m_frameRate.toString(),
+                 m_tdTickFramerate.toString())
             .arg(m_tdTickCount)
             .arg(m_tdBase)
             .arg(m_totalDuration));
@@ -1383,10 +1383,13 @@ void DTVRecorder::HandleSingleProgramPMT(ProgramMapTable *pmt, bool insert)
                     }
                     if (m_h2645Parser == nullptr)
                     {
-                        m_h2645Parser = reinterpret_cast<H2645Parser *>
-                                        (new AVCParser);
-                        dynamic_cast<AVCParser *>(m_h2645Parser)->
-                            use_I_forKeyframes(m_useIForKeyframe);
+                        auto * avcParser = new AVCParser;
+                        if (avcParser != nullptr)
+                        {
+                            m_h2645Parser = reinterpret_cast<H2645Parser *>
+                                (avcParser);
+                            avcParser->use_I_forKeyframes(m_useIForKeyframe);
+                        }
                     }
                     break;
                 case StreamID::H265Video:

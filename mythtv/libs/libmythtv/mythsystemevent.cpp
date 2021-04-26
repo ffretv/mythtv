@@ -57,7 +57,8 @@ class SystemEventThread : public QRunnable
 
         gCoreContext->SendMessage(
             QString("SYSTEM_EVENT_RESULT %1 SENDER %2 RESULT %3")
-                    .arg(m_event).arg(gCoreContext->GetHostName()).arg(result));
+                    .arg(m_event, gCoreContext->GetHostName(),
+                         QString::number(result)));
     }
 
   private:
@@ -233,7 +234,7 @@ QString MythSystemEventHandler::EventNameToSetting(const QString &name)
     for (const auto & part : qAsConst(parts))
     {
         result += part.at(0).toUpper();
-        result += part.midRef(1);
+        result += part.mid(1);
     }
 
     return result;
@@ -340,8 +341,8 @@ void SendMythSystemRecEvent(const QString &msg, const RecordingInfo *pginfo)
             .arg(pginfo->GetChanID())
             .arg(pginfo->GetRecordingStartTime(MythDate::ISODate))
             .arg(pginfo->GetRecordingStatus())
-            .arg(CardUtil::GetVideoDevice(cardid))
-            .arg(CardUtil::GetVBIDevice(cardid)));
+            .arg(CardUtil::GetVideoDevice(cardid),
+                 CardUtil::GetVBIDevice(cardid)));
     }
     else
     {
@@ -362,7 +363,7 @@ void SendMythSystemPlayEvent(const QString &msg, const ProgramInfo *pginfo)
     {
         gCoreContext->SendSystemEvent(
             QString("%1 HOSTNAME %2 CHANID %3 STARTTIME %4")
-                    .arg(msg).arg(gCoreContext->GetHostName())
+                    .arg(msg, gCoreContext->GetHostName())
                     .arg(pginfo->GetChanID())
                     .arg(pginfo->GetRecordingStartTime(MythDate::ISODate)));
     }

@@ -20,6 +20,8 @@
 
 #define LOC      QString("MythFontProperties: ")
 
+#define KEEP_OLD_NAMES 1
+
 QMutex MythFontProperties::s_zoomLock;
 uint MythFontProperties::s_zoomPercent = 0;
 
@@ -89,8 +91,8 @@ void MythFontProperties::CalcHash(void)
     if (m_bFreeze)
         return;
 
-    m_hash = QString("%1%2%3%4").arg(m_face.toString())
-                                .arg(m_brush.color().name())
+    m_hash = QString("%1%2%3%4").arg(m_face.toString(),
+                                     m_brush.color().name())
                                 .arg(static_cast<int>(m_hasShadow))
                                 .arg(static_cast<int>(m_hasOutline));
 
@@ -251,8 +253,8 @@ MythFontProperties *MythFontProperties::ParseFromXml(
                 QString("Attempting to define '%1'\n\t\t\t"
                         "with face '%2', but it already "
                         "exists with face '%3'")
-                .arg(name).arg(QFontInfo(newFont->m_face).family())
-                .arg((tmp) ? QFontInfo(tmp->m_face).family() : "ERROR"));
+                .arg(name, QFontInfo(newFont->m_face).family(),
+                     (tmp) ? QFontInfo(tmp->m_face).family() : "ERROR"));
         }
         delete newFont;
         return nullptr;
@@ -345,27 +347,39 @@ MythFontProperties *MythFontProperties::ParseFromXml(
             {
                 QString weight = getFirstText(info).toLower();
 
-                if (weight == "ultralight" ||
+                if (weight == "thin" ||
                     weight == "1")
-                    newFont->m_face.setWeight(1);
-                else if (weight == "light" ||
+                    newFont->m_face.setWeight(QFont::Thin);
+                else if (weight == "extralight" ||
+#ifdef KEEP_OLD_NAMES
+                         weight == "ultralight" ||
+#endif
                          weight == "2")
+                    newFont->m_face.setWeight(QFont::ExtraLight);
+                else if (weight == "light" ||
+                         weight == "3")
                     newFont->m_face.setWeight(QFont::Light);
                 else if (weight == "normal" ||
-                         weight == "3")
-                    newFont->m_face.setWeight(QFont::Normal);    // NOLINT(bugprone-branch-clone)
-                else if (weight == "demibold" ||
                          weight == "4")
+                    newFont->m_face.setWeight(QFont::Normal);    // NOLINT(bugprone-branch-clone)
+                else if (weight == "medium" ||
+                         weight == "5")
+                    newFont->m_face.setWeight(QFont::Medium);
+                else if (weight == "demibold" ||
+                         weight == "6")
                     newFont->m_face.setWeight(QFont::DemiBold);
                 else if (weight == "bold" ||
-                         weight == "5")
-                    newFont->m_face.setWeight(QFont::Bold);
-                else if (weight == "black" ||
-                         weight == "6")
-                    newFont->m_face.setWeight(QFont::Black);
-                else if (weight == "ultrablack" ||
                          weight == "7")
-                    newFont->m_face.setWeight(99);
+                    newFont->m_face.setWeight(QFont::Bold);
+                else if (weight == "extrabold" ||
+                         weight == "8")
+                    newFont->m_face.setWeight(QFont::ExtraBold);
+                else if (weight == "black" ||
+#ifdef KEEP_OLD_NAMES
+                         weight == "ultrablack" ||
+#endif
+                         weight == "9")
+                    newFont->m_face.setWeight(QFont::Black);
                 else
                     newFont->m_face.setWeight(QFont::Normal);
             }
@@ -440,7 +454,7 @@ MythFontProperties *MythFontProperties::ParseFromXml(
     {
         VERBOSE_XML(VB_GENERAL, LOG_ERR, filename, element,
                     QString("Failed to load '%1', got '%2' instead")
-            .arg(newFont->m_face.family()).arg(fi.family()));
+            .arg(newFont->m_face.family(), fi.family()));
 
         if (s_showAvailable)
         {
