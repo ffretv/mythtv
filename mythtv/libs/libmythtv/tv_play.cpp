@@ -222,8 +222,8 @@ public:
         {
             assert("Should never be reached.");
         }
-    const MenuBase &m_menu;
-    const QDomNode  m_node;
+    const MenuBase m_menu;
+    const QDomNode m_node;
 };
 
 Q_DECLARE_METATYPE(MenuNodeTuple)
