@@ -15,6 +15,7 @@
 #else
 #include <exiv2/image.hpp>
 #endif
+#include <exiv2/exiv2.hpp>
 
 // To read FFMPEG Metadata
 extern "C" {
