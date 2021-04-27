@@ -4743,6 +4743,8 @@ case $target_os in
         # Workaround compile errors from missing ru_maxrss
         add_cppflags -D_DARWIN_C_SOURCE
 
+	append CONFIG_INCLUDEPATH "${sysroot}/opt/local/include"
+
         ###### Standard ffmpeg configure stuff follows:
         enabled ppc && add_asflags -force_cpusubtype_ALL
         install_name_dir_default='$(SHLIBDIR)'
